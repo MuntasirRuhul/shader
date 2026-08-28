@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist/node-config",
+    "types": ["node"],
+    "noEmit": false
+  },
+  "include": ["vite.config.ts", "vitest.config.ts"]
+}

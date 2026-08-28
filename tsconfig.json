@@ -1,0 +1,8 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/design-system" },
+    { "path": "./packages/shader-core" },
+    { "path": "./apps/studio" }
+  ]
+}

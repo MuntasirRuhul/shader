@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.DS_Store
+.vite/
+
+# Machine-specific dev server config (absolute paths)
+.claude/launch.json

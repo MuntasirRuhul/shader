@@ -1,0 +1,9 @@
+dist/
+coverage/
+node_modules/
+**/generated/
+package-lock.json
+
+# Tool-generated and authored-prose files; keep them out of the formatter.
+openspec/
+.claude/

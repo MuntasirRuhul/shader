@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "types": ["node", "@testing-library/jest-dom/vitest"]
+  },
+  "include": ["src/**/*"],
+  "references": [
+    {
+      "path": "../../packages/design-system"
+    },
+    {
+      "path": "../../packages/shader-core"
+    }
+  ]
+}

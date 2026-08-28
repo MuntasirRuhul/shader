@@ -1,0 +1,17 @@
+{
+  "name": "@shader/design-system",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Design tokens, theming, and accessible UI primitives. Depends on nothing in the application.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tokens.css": "./src/tokens/generated/tokens.css"
+  },
+  "scripts": {
+    "build:tokens": "tsx src/tokens/build.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

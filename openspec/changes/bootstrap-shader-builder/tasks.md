@@ -1,11 +1,11 @@
 ## 1. Workspace and tooling foundation
 
-- [ ] 1.1 Initialize the workspace with packages for the design system, shader core, and application; verify the package manager resolves all workspaces and `install` completes cleanly
-- [ ] 1.2 Add TypeScript configuration with strict mode and project references across the three packages; verify a type error in one package fails the root typecheck command
-- [ ] 1.3 Add Vite build and dev-server configuration for the application package; verify the dev server starts and serves a placeholder page
-- [ ] 1.4 Add Vitest with a headless DOM environment and a shared setup file; verify a trivial test in each package runs from the root test command
-- [ ] 1.5 Add linting and formatting with import-boundary rules that forbid the design system and shader core from importing the application; verify a deliberate cross-boundary import fails lint
-- [ ] 1.6 Add a single root script set (`dev`, `build`, `test`, `typecheck`, `lint`) and a CI workflow running them; verify the workflow passes on a clean checkout
+- [x] 1.1 Initialize the workspace with packages for the design system, shader core, and application; verify the package manager resolves all workspaces and `install` completes cleanly
+- [x] 1.2 Add TypeScript configuration with strict mode and project references across the three packages; verify a type error in one package fails the root typecheck command
+- [x] 1.3 Add Vite build and dev-server configuration for the application package; verify the dev server starts and serves a placeholder page
+- [x] 1.4 Add Vitest with a headless DOM environment and a shared setup file; verify a trivial test in each package runs from the root test command
+- [x] 1.5 Add linting and formatting with import-boundary rules that forbid the design system and shader core from importing the application; verify a deliberate cross-boundary import fails lint
+- [x] 1.6 Add a single root script set (`dev`, `build`, `test`, `typecheck`, `lint`) and a CI workflow running them; verify the workflow passes on a clean checkout
 
 ## 2. Design system package
 

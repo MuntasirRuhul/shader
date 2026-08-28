@@ -1,0 +1,25 @@
+{
+  "name": "@shader/studio",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The shader builder application shell, canvas surface, and inspector.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@shader/core": "*",
+    "@shader/design-system": "*",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "@vitejs/plugin-react": "^6.1.1",
+    "vite": "^8.2.2"
+  }
+}
