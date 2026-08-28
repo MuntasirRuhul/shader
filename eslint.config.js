@@ -6,6 +6,7 @@ import jsxA11y from 'eslint-plugin-jsx-a11y';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
+import designTokens from './tools/eslint-rules/no-literal-design-values.js';
 
 const tsProjects = [
   'packages/design-system/tsconfig.json',
@@ -90,6 +91,8 @@ export default tseslint.config(
             'vitest.config.ts',
             'test/*.ts',
             'apps/*/vite.config.ts',
+            'tools/eslint-rules/*.js',
+            'stylelint.config.js',
           ],
         },
         tsconfigRootDir: import.meta.dirname,
@@ -140,6 +143,21 @@ export default tseslint.config(
   },
   ...layerBoundaries,
   {
+    // Every visual value in a component must resolve from a design token.
+    files: ['packages/design-system/src/**/*.{ts,tsx}', 'apps/studio/src/**/*.{ts,tsx}'],
+    plugins: { 'design-tokens': designTokens },
+    rules: {
+      'design-tokens/no-literal-design-values': 'error',
+    },
+  },
+  {
+    // The token source is where literal values are defined, by definition.
+    files: ['packages/design-system/src/tokens/**'],
+    rules: {
+      'design-tokens/no-literal-design-values': 'off',
+    },
+  },
+  {
     files: ['**/*.test.{ts,tsx}', 'test/**/*.ts', '**/tokens/build.ts'],
     rules: {
       'no-console': 'off',
@@ -149,7 +167,7 @@ export default tseslint.config(
   {
     // Build tooling sits outside the packages' TS projects, so type-aware rules
     // have no type information to work from here.
-    files: ['eslint.config.js', '**/*.config.{ts,js}'],
+    files: ['eslint.config.js', 'stylelint.config.js', '**/*.config.{ts,js}', 'tools/**/*.js'],
     extends: [tseslint.configs.disableTypeChecked],
     rules: {
       'no-console': 'off',

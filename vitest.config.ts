@@ -30,6 +30,15 @@ export default defineConfig({
         },
       },
       {
+        // The custom lint rules that enforce the token and layer boundaries.
+        test: {
+          name: 'tools',
+          root: fromRoot('./tools'),
+          environment: 'node',
+          include: ['**/*.test.js'],
+        },
+      },
+      {
         plugins: [react()],
         test: {
           name: 'studio',

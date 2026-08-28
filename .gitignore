@@ -7,3 +7,6 @@ coverage/
 
 # Machine-specific dev server config (absolute paths)
 .claude/launch.json
+
+# Generated from the token source by npm run build:tokens
+packages/design-system/src/tokens/generated/

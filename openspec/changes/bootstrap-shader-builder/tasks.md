@@ -9,10 +9,10 @@
 
 ## 2. Design system package
 
-- [ ] 2.1 Define the token source in TypeScript covering color, spacing, radius, typography, elevation, and motion, with light and dark values; verify a token missing a value in either theme fails the token build
-- [ ] 2.2 Implement the build step emitting tokens as CSS custom properties per theme; verify the generated stylesheet contains every token in both themes
-- [ ] 2.3 Implement the theme provider with system-preference default, explicit override, and persistence; verify tests cover system default, live system change, explicit override, and restore after reload
-- [ ] 2.4 Add the lint rule rejecting literal color, spacing, radius, and typography values in component styles; verify a deliberate literal fails lint
+- [x] 2.1 Define the token source in TypeScript covering color, spacing, radius, typography, elevation, and motion, with light and dark values; verify a token missing a value in either theme fails the token build
+- [x] 2.2 Implement the build step emitting tokens as CSS custom properties per theme; verify the generated stylesheet contains every token in both themes
+- [x] 2.3 Implement the theme provider with system-preference default, explicit override, and persistence; verify tests cover system default, live system change, explicit override, and restore after reload
+- [x] 2.4 Add the lint rule rejecting literal color, spacing, radius, and typography values in component styles; verify a deliberate literal fails lint
 - [ ] 2.5 Build the primitive set needed by the shell and inspector — button, icon button, slider, numeric input, text input, toggle, select, color picker, popover, tooltip, collapsible, and scroll area — on headless primitives; verify each renders from its declared inputs alone in isolation tests
 - [ ] 2.6 Add keyboard and assistive-technology tests for the primitives covering reachability, activation, dismissal, visible focus, focus trapping and restoration, and exposed role, name, and state; verify the suite passes for every primitive
 

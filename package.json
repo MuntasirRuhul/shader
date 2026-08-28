@@ -29,23 +29,27 @@
     "eslint-plugin-react-refresh": "^0.5.5",
     "jsdom": "^28.1.0",
     "prettier": "^3.9.6",
+    "stylelint": "^17.14.1",
+    "stylelint-config-standard": "^40.0.0",
+    "stylelint-declaration-strict-value": "^1.12.1",
     "tsx": "^4.23.12",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.68.0",
     "vitest": "^4.1.11"
   },
   "scripts": {
-    "dev": "npm run dev -w @shader/studio",
-    "build": "tsc --build && npm run build -w @shader/studio",
+    "dev": "npm run build:tokens && npm run dev -w @shader/studio",
+    "build": "npm run build:tokens && tsc --build && npm run build -w @shader/studio",
     "build:clean": "tsc --build --clean && npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --build",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint": "eslint . && stylelint \"**/*.css\"",
+    "lint:fix": "eslint . --fix && stylelint \"**/*.css\" --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "npm run lint && npm run format:check && npm run typecheck && npm run test"
+    "verify": "npm run lint && npm run format:check && npm run typecheck && npm run test",
+    "build:tokens": "npm run build:tokens -w @shader/design-system"
   }
 }
