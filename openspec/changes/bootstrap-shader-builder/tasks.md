@@ -90,13 +90,13 @@
 
 ## 9. Persistence, import, and export
 
-- [ ] 9.1 Implement versioned document serialization and deserialization; verify a document round-trips equivalently in objects, order, fills, and parameter values
-- [ ] 9.2 Implement the migration chain for older supported versions and refusal of newer versions naming both; verify an older document migrates without user action and a newer one is refused rather than partially loaded
-- [ ] 9.3 Implement rejection of documents containing unrecognized object types, naming the type; verify the object is not silently discarded
-- [ ] 9.4 Implement local persistence and restore on return; verify the document is restored at the last persisted point
-- [ ] 9.5 Implement persistence failure handling for unavailable or full storage, and recovery from unparseable stored data; verify the user is informed, the application stays usable with export available, and an unparseable store starts an empty document
-- [ ] 9.6 Implement file export and import, including refusal of invalid files leaving the current document untouched and confirmation before replacing unsaved work; verify each
-- [ ] 9.7 Verify an exported file imports back into an equivalent document
+- [x] 9.1 Implement versioned document serialization and deserialization; verify a document round-trips equivalently in objects, order, fills, and parameter values
+- [x] 9.2 Implement the migration chain for older supported versions and refusal of newer versions naming both; verify an older document migrates without user action and a newer one is refused rather than partially loaded
+- [x] 9.3 Implement rejection of documents containing unrecognized object types, naming the type; verify the object is not silently discarded
+- [x] 9.4 Implement local persistence and restore on return; verify the document is restored at the last persisted point
+- [x] 9.5 Implement persistence failure handling for unavailable or full storage, and recovery from unparseable stored data; verify the user is informed, the application stays usable with export available, and an unparseable store starts an empty document
+- [x] 9.6 Implement file export and import, including refusal of invalid files leaving the current document untouched and confirmation before replacing unsaved work; verify each
+- [x] 9.7 Verify an exported file imports back into an equivalent document
 
 ## 10. Mesh gradient shader port
 

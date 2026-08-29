@@ -10,6 +10,7 @@ import {
   type ShaderRegistry,
 } from '@shader/core';
 import { Button, ColorField } from '@shader/design-system';
+import { DocumentActions } from '../persistence/DocumentActions';
 import { useEditorStore } from '../store/editorStore';
 import { transientChannel } from '../store/transientChannel';
 import styles from './Inspector.module.css';
@@ -92,6 +93,8 @@ export function Inspector({ registry, defaultShaderId }: InspectorProps) {
           <ShaderPanel objectId={object.id} registry={registry} />
         )}
       </div>
+
+      <DocumentActions />
     </div>
   );
 }

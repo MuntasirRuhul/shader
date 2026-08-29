@@ -10,6 +10,7 @@ import './global.css';
 import { CanvasStage } from './canvas/CanvasStage';
 import { Inspector } from './inspector/Inspector';
 import { ShaderLibrary } from './panels/ShaderLibrary';
+import { useDocumentPersistence } from './persistence/useDocumentPersistence';
 import { libraryShaders, registry } from './shaders/registry';
 import { AppShell } from './shell/AppShell';
 import { usePanelLayout } from './shell/usePanelLayout';
@@ -35,6 +36,7 @@ const textIcon = (
 
 export function App() {
   const { layout, setWidth } = usePanelLayout();
+  useDocumentPersistence();
   const document = useEditorStore((state) => state.document);
   const tool = useEditorStore((state) => state.tool.active);
   const setTool = useEditorStore((state) => state.setTool);

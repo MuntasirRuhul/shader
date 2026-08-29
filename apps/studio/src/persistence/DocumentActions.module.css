@@ -1,0 +1,21 @@
+.actions {
+  display: flex;
+  gap: var(--sb-space-4);
+  padding: var(--sb-space-5);
+  border-top: 1px solid var(--sb-border-subtle);
+}
+
+.action {
+  flex: 1;
+}
+
+.fileInput {
+  display: none;
+}
+
+.problem {
+  padding: 0 var(--sb-space-5) var(--sb-space-5);
+  color: var(--sb-warning-text);
+  font-size: var(--sb-font-size-sm);
+  line-height: var(--sb-line-height-normal);
+}

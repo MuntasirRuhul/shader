@@ -161,3 +161,26 @@ export {
 export { isTargetable, objectAt, objectsAt, objectsWithin } from './canvas/hitTesting';
 
 export { SOLID_FILL_SHADER_ID, solidFillManifest } from './runtime/solidShader';
+
+export {
+  deserializeDocument,
+  documentsEqual,
+  exportFilename,
+  loadDocument,
+  migrations,
+  serializeDocument,
+  type LoadFailure,
+  type LoadResult,
+  type RawDocument,
+} from './persistence/serialization';
+
+export {
+  browserStorage,
+  clearStoredDocument,
+  DOCUMENT_STORAGE_KEY,
+  restoreDocument,
+  saveDocument,
+  type DocumentStorage,
+  type RestoreResult,
+  type SaveResult,
+} from './persistence/localStore';
