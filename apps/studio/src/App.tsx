@@ -38,8 +38,19 @@ export function App() {
   const tool = useEditorStore((state) => state.tool.active);
   const setTool = useEditorStore((state) => state.setTool);
   const addObject = useEditorStore((state) => state.addObject);
+  const selection = useEditorStore((state) => state.selection);
+  const setFill = useEditorStore((state) => state.setFill);
 
   const placeShader = (manifest: ShaderManifest, preset: ShaderPreset) => {
+    const fill = shaderFill(manifest.id, resolvePreset(manifest, preset.id), preset.id);
+
+    // With something selected, the choice applies to it — which is how a
+    // shader gets onto a shape or into text. Otherwise it places a new object.
+    if (selection.length > 0) {
+      for (const objectId of selection) setFill(objectId, fill);
+      return;
+    }
+
     // Cascade successive placements so a new object does not land exactly on
     // the previous one and appear to replace it.
     const step = (document.objects.length % 6) * 32;
@@ -51,7 +62,7 @@ export function App() {
         y: 100 + step,
         width: 480,
         height: 320,
-        fill: shaderFill(manifest.id, resolvePreset(manifest, preset.id), preset.id),
+        fill,
       }),
     );
   };

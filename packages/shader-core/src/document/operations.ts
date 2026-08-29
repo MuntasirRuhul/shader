@@ -5,7 +5,34 @@ import {
   type CanvasDocument,
   type CanvasObject,
   type Fill,
+  type TextSettings,
 } from './model';
+
+/**
+ * The fields an update may change.
+ *
+ * Spelled out rather than derived from the object union: `Omit` distributes
+ * over a union and would allow only the fields every type shares, dropping
+ * `text` and `cornerRadius`. Listing them also documents what is mutable —
+ * `id` and `type` deliberately are not.
+ */
+export interface ObjectChanges {
+  readonly name?: string;
+  readonly x?: number;
+  readonly y?: number;
+  readonly width?: number;
+  readonly height?: number;
+  readonly rotation?: number;
+  readonly opacity?: number;
+  readonly visible?: boolean;
+  readonly locked?: boolean;
+  readonly fill?: Fill;
+  /** Rectangles only. */
+  readonly cornerRadius?: number;
+  /** Text objects only. */
+  readonly text?: string;
+  readonly textSettings?: TextSettings;
+}
 
 /**
  * Every change to a document, expressed as a pure function.
@@ -75,7 +102,7 @@ export function removeObjects(
 export function updateObject(
   document: CanvasDocument,
   objectId: string,
-  changes: Partial<Omit<CanvasObject, 'id' | 'type'>>,
+  changes: ObjectChanges,
 ): CanvasDocument {
   const index = objectIndex(document, objectId);
   if (index < 0) return document;

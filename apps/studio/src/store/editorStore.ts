@@ -6,6 +6,7 @@ import {
   type CanvasDocument,
   type CanvasObject,
   type Fill,
+  type ObjectChanges,
   type ParameterValues,
 } from '@shader/core';
 import { replaceShaderValues, setFill, setShaderValues } from '@shader/core';
@@ -54,11 +55,7 @@ export interface EditorState {
 
   // Document
   readonly addObject: (object: CanvasObject) => void;
-  readonly updateObject: (
-    objectId: string,
-    changes: Partial<Omit<CanvasObject, 'id' | 'type'>>,
-    label?: string,
-  ) => void;
+  readonly updateObject: (objectId: string, changes: ObjectChanges, label?: string) => void;
   readonly deleteSelected: () => void;
   readonly setFill: (objectId: string, fill: Fill) => void;
   readonly setShaderValues: (objectId: string, values: ParameterValues) => void;

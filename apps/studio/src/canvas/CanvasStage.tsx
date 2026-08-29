@@ -3,6 +3,7 @@ import { useCallback, useRef } from 'react';
 import { useEditorStore } from '../store/editorStore';
 import styles from './CanvasStage.module.css';
 import { SelectionOverlay } from './SelectionOverlay';
+import { TextEditor } from './TextEditor';
 import { useCanvasPointer } from './useCanvasPointer';
 import { useCanvasShortcuts } from './useCanvasShortcuts';
 import { useShaderCanvas } from './useShaderCanvas';
@@ -18,10 +19,12 @@ export function CanvasStage({ registry, onCompileFailure }: CanvasStageProps) {
   const document = useEditorStore((state) => state.document);
   const selection = useEditorStore((state) => state.selection);
   const viewport = useEditorStore((state) => state.viewport);
+  const editingTextId = useEditorStore((state) => state.tool.editingTextId);
 
   const { canvasRef } = useShaderCanvas({
     document,
     registry,
+    zoom: viewport.zoom,
     ...(onCompileFailure ? { onCompileFailure } : {}),
   });
 
@@ -54,6 +57,36 @@ export function CanvasStage({ registry, onCompileFailure }: CanvasStageProps) {
         selection={selection}
         viewport={viewport}
       />
+
+      {editingTextId !== null && (
+        <TextEditor
+          document={document}
+          editingId={editingTextId}
+          onCancel={(objectId) => {
+            const state = useEditorStore.getState();
+            state.endTextEditing();
+            // A text object that was never given content leaves nothing behind.
+            const object = state.document.objects.find((candidate) => candidate.id === objectId);
+            if (object?.type === 'text' && object.text === '') {
+              state.selectMany([objectId]);
+              state.deleteSelected();
+            }
+          }}
+          onCommit={(objectId, text) => {
+            const state = useEditorStore.getState();
+            state.endTextEditing();
+
+            if (text.trim() === '') {
+              state.selectMany([objectId]);
+              state.deleteSelected();
+              return;
+            }
+
+            state.updateObject(objectId, { text, name: text.slice(0, 40) }, 'Edit text');
+          }}
+          viewport={viewport}
+        />
+      )}
 
       {document.objects.length === 0 && (
         <div className={styles.empty}>

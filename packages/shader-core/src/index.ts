@@ -132,6 +132,7 @@ export {
   setShaderValues,
   updateObject,
   visibleObjects,
+  type ObjectChanges,
 } from './document/operations';
 
 export {

@@ -9,10 +9,13 @@ import {
 } from '@shader/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { buildScene } from './buildScene';
+import { TextMaskCache } from './textRasterizer';
 
 export interface ShaderCanvasOptions {
   readonly document: CanvasDocument;
   readonly registry: Pick<ShaderRegistry, 'get'>;
+  /** Text masks are rendered for the current magnification. */
+  readonly zoom?: number;
   readonly onCompileFailure?: (failure: ShaderCompileFailure) => void;
 }
 
@@ -36,6 +39,7 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
   const loopRef = useRef<AnimationLoop | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const observerRef = useRef<ResizeObserver | null>(null);
+  const masksRef = useRef(new TextMaskCache());
 
   const [status, setStatus] = useState<RuntimeStatus>({ kind: 'ready' });
 
@@ -45,8 +49,25 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
   documentRef.current = options.document;
   const registryRef = useRef(options.registry);
   registryRef.current = options.registry;
+  const zoomRef = useRef(options.zoom ?? 1);
+  zoomRef.current = options.zoom ?? 1;
   const failureRef = useRef(options.onCompileFailure);
   failureRef.current = options.onCompileFailure;
+
+  /** The scene for the current document, with text masks attached. */
+  const sceneFor = useCallback((document: CanvasDocument) => {
+    const masks = masksRef.current;
+    const ratio = typeof window === 'undefined' ? 1 : window.devicePixelRatio;
+
+    const scene = buildScene(document, {
+      maskFor: (object) =>
+        object.type === 'text' ? masks.maskFor(object, zoomRef.current, ratio) : undefined,
+    });
+
+    // Drop masks for objects the scene no longer contains.
+    masks.retainOnly(document.objects.map((object) => object.id));
+    return scene;
+  }, []);
 
   const teardown = useCallback(() => {
     loopRef.current?.dispose();
@@ -55,6 +76,7 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
     rendererRef.current = null;
     observerRef.current?.disconnect();
     observerRef.current = null;
+    masksRef.current.clear();
   }, []);
 
   const attach = useCallback(
@@ -100,7 +122,7 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
       observer.observe(element);
       observerRef.current = observer;
 
-      renderer.setScene(buildScene(documentRef.current));
+      renderer.setScene(sceneFor(documentRef.current));
       resize();
       loop.reconcile();
 
@@ -112,12 +134,12 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
       });
       element.addEventListener('webglcontextrestored', () => {
         renderer.handleContextRestored();
-        renderer.setScene(buildScene(documentRef.current));
+        renderer.setScene(sceneFor(documentRef.current));
         loop.reconcile();
         loop.renderOnce();
       });
     },
-    [teardown],
+    [sceneFor, teardown],
   );
 
   // Push the scene whenever the document changes, and draw once so a still
@@ -127,10 +149,10 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
     const loop = loopRef.current;
     if (!renderer || !loop) return;
 
-    renderer.setScene(buildScene(options.document));
+    renderer.setScene(sceneFor(options.document));
     loop.reconcile();
     if (!loop.isRunning) loop.renderOnce();
-  }, [options.document]);
+  }, [options.document, options.zoom, sceneFor]);
 
   useEffect(() => teardown, [teardown]);
 

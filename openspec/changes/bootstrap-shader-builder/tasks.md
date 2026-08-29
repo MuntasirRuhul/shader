@@ -63,13 +63,13 @@
 ## 7. Canvas surface and tools
 
 - [x] 7.1 Mount the rendering surface and drive the scene from the document in stacking order; verify objects render in order with their fills
-- [ ] 7.2 Implement the text mask pipeline rasterizing glyphs offscreen and multiplying them against shader output, re-rasterizing on content, size, font, and zoom-threshold changes; verify a text object renders with a shader fill and re-rasterizes only on those changes
+- [x] 7.2 Implement the text mask pipeline rasterizing glyphs offscreen and multiplying them against shader output, re-rasterizing on content, size, font, and zoom-threshold changes; verify a text object renders with a shader fill and re-rasterizes only on those changes
 - [x] 7.3 Implement CPU hit-testing with inverse transforms and analytic shape tests, respecting stacking order, visibility, and locked state; verify targeting under overlap, on hidden objects, and on rotated objects
 - [x] 7.4 Implement the tool state machine with exactly one active tool, select as the default, toolbar indication, and keyboard shortcuts suppressed while a text input has focus; verify each
 - [x] 7.5 Implement the select tool — click selection, click-to-clear, marquee selection of enclosed unlocked visible objects, selection dragging, and cursor feedback; verify each case
 - [x] 7.6 Implement transform handles for resize with opposite-corner anchoring, aspect-constrained resize, rotation about center, and a bounding indicator for multiple selection; verify each
 - [x] 7.7 Implement the shape tool with drag-out preview, constrained equal sides, selection and return to select on creation, and no object on a zero-area drag; verify each
-- [ ] 7.8 Implement the text tool with click-to-create entering editing, commit on confirm or click-away, discard when left empty, and double-click to edit an existing text object; verify each
+- [x] 7.8 Implement the text tool with click-to-create entering editing, commit on confirm or click-away, discard when left empty, and double-click to edit an existing text object; verify each
 - [x] 7.9 Implement viewport pan and zoom about the pointer with clamped limits, a displayed zoom level, and zoom-to-fit; verify object positions are unchanged by panning and limits clamp
 - [x] 7.10 Implement keyboard movement by fine and coarse steps and deletion as a single undoable step, both suppressed while a text input has focus; verify each
 

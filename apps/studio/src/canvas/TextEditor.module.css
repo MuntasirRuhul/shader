@@ -1,0 +1,19 @@
+/*
+ * The editor sits exactly over the object it edits. It is transparent so the
+ * rendered glyphs stay visible beneath, and the caret appears to sit in them.
+ */
+.editor {
+  position: absolute;
+  z-index: 3;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--sb-accent-solid);
+  background: transparent;
+  color: var(--sb-text-primary);
+  resize: none;
+  overflow: hidden;
+}
+
+.editor:focus {
+  outline: none;
+}
