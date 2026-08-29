@@ -13,52 +13,52 @@
 - [x] 2.2 Implement the build step emitting tokens as CSS custom properties per theme; verify the generated stylesheet contains every token in both themes
 - [x] 2.3 Implement the theme provider with system-preference default, explicit override, and persistence; verify tests cover system default, live system change, explicit override, and restore after reload
 - [x] 2.4 Add the lint rule rejecting literal color, spacing, radius, and typography values in component styles; verify a deliberate literal fails lint
-- [ ] 2.5 Build the primitive set needed by the shell and inspector — button, icon button, slider, numeric input, text input, toggle, select, color picker, popover, tooltip, collapsible, and scroll area — on headless primitives; verify each renders from its declared inputs alone in isolation tests
-- [ ] 2.6 Add keyboard and assistive-technology tests for the primitives covering reachability, activation, dismissal, visible focus, focus trapping and restoration, and exposed role, name, and state; verify the suite passes for every primitive
+- [ ] 2.5 Build the primitives the application shell needs — button, icon button, and tooltip — on headless primitives; verify each renders from its declared inputs alone in isolation tests
+- [ ] 2.6 Add the keyboard and assistive-technology test suite covering reachability, activation, dismissal, visible focus, focus trapping and restoration, and exposed role, name, and state; verify it passes for every primitive built so far, and re-run it as later primitives land
 
-## 3. Shader manifest, schema, and registry
+## 3. Application shell
 
-- [ ] 3.1 Define the parameter schema types for numeric, boolean, color, enum, vector, and repeatable-group parameters, including group and ordering metadata; verify types compile and reject an unknown parameter type
-- [ ] 3.2 Define the shader manifest type with identity, display metadata, schema version, GLSL sources, parameter schema, and presets; verify a manifest supplying interface code fails to typecheck
-- [ ] 3.3 Implement manifest validation covering missing fields, unsupported parameter types, defaults outside declared ranges or option sets, repeatable groups missing a maximum, and unsupported schema versions; verify each failure produces an error naming the shader and the specific fault
-- [ ] 3.4 Implement preset validation and default-filling for omitted parameters; verify a preset with an out-of-range value is rejected and an incomplete preset resolves omitted parameters to defaults
-- [ ] 3.5 Implement the registry with registration, duplicate-identifier rejection, listing, and lookup by identifier; verify listing returns registered shaders and an unknown identifier reports not-found rather than a partial manifest
-- [ ] 3.6 Verify the parameter schema and presets round-trip through serialization unchanged
+- [ ] 3.1 Implement the three-region layout with slot-injected region content; verify the canvas stage absorbs remaining width and substituted content renders without shell changes
+- [ ] 3.2 Implement panel collapse and restore with persistence; verify a collapsed panel stays collapsed across reload and restores to its prior width
+- [ ] 3.3 Implement panel resizing with clamped minimum and maximum widths and persistence; verify dragging past a limit clamps and widths survive reload
+- [ ] 3.4 Implement the floating toolbar positioned over the canvas stage, staying within stage bounds as panels change and blocking pointer input only within its own bounds; verify both under panel collapse and resize
+- [ ] 3.5 Implement region labeling and keyboard order across the shell; verify tab order is consistent, focus is never trapped without a dismiss action, and each region is announced distinctly
+- [ ] 3.6 Implement the unsupported-environment state replacing the canvas stage, with rendering support supplied to the shell rather than detected by it; verify the message appears instead of a blank canvas when support is reported unavailable, and that the shell needs no rendering context to be tested
 
-## 4. WebGL2 shader runtime
+## 4. Shader manifest, schema, and registry
 
-- [ ] 4.1 Define the rendering port interface the canvas depends on, decoupled from WebGL; verify the application and document packages reference only this interface
-- [ ] 4.2 Implement context acquisition with an explicit unsupported result when WebGL2 is unavailable; verify the unsupported path is reported rather than throwing
-- [ ] 4.3 Implement the shader preamble supplying `vUv`, `uResolution`, and `uTime`, and the quad vertex stage producing the UV varying; verify a fixture shader renders correct object-local gradients under translation, scale, and rotation
-- [ ] 4.4 Implement program compilation and linking with failure reporting that includes the shader identifier and driver diagnostic; verify a deliberately broken shader reports both and leaves the application usable
-- [ ] 4.5 Implement the per-context program cache; verify one program is compiled when several objects share a shader and that reselecting a shader reuses the cache
-- [ ] 4.6 Implement schema-driven uniform binding for every parameter type, including repeatable groups bound as fixed-size arrays with an active-count uniform; verify bindings are set from values with no shader-specific code and that changing entry count does not recompile
-- [ ] 4.7 Implement the shared animation loop with display synchronization, idle suspension when nothing animates, and suspension while the document is hidden; verify frames stop when idle or hidden and resume on change or visibility
-- [ ] 4.8 Implement the elapsed-time source so animation speed is frame-rate independent and resumes without a jump after suspension; verify both properties under simulated frame-rate variation and a suspend-resume cycle
-- [ ] 4.9 Implement drawing-surface sizing at device pixel ratio with a configured maximum, responding to size changes; verify output matches after resize and that the ratio is capped
-- [ ] 4.10 Implement context-loss and restore handling that suspends draws, surfaces a message, and recreates resources on restore; verify the scene and parameter values are unchanged across a simulated loss and restore
-- [ ] 4.11 Implement resource release for removed objects and unused shaders, and full teardown on unmount; verify no graphics resources remain allocated after each
+- [ ] 4.1 Define the parameter schema types for numeric, boolean, color, enum, vector, and repeatable-group parameters, including group and ordering metadata; verify types compile and reject an unknown parameter type
+- [ ] 4.2 Define the shader manifest type with identity, display metadata, schema version, GLSL sources, parameter schema, and presets; verify a manifest supplying interface code fails to typecheck
+- [ ] 4.3 Implement manifest validation covering missing fields, unsupported parameter types, defaults outside declared ranges or option sets, repeatable groups missing a maximum, and unsupported schema versions; verify each failure produces an error naming the shader and the specific fault
+- [ ] 4.4 Implement preset validation and default-filling for omitted parameters; verify a preset with an out-of-range value is rejected and an incomplete preset resolves omitted parameters to defaults
+- [ ] 4.5 Implement the registry with registration, duplicate-identifier rejection, listing, and lookup by identifier; verify listing returns registered shaders and an unknown identifier reports not-found rather than a partial manifest
+- [ ] 4.6 Verify the parameter schema and presets round-trip through serialization unchanged
 
-## 5. Document model and state
+## 5. WebGL2 shader runtime
 
-- [ ] 5.1 Define the document model — objects with identifier, type, position, size, rotation, opacity, visibility, locked state, and fill, plus explicit stacking order; verify identifiers are unique on insert and order survives removal
-- [ ] 5.2 Implement rectangle, ellipse, and text object types, with text carrying content and type settings; verify each type constructs with the common properties and text carries its content
-- [ ] 5.3 Implement solid and shader fills, with shader fills holding per-object parameter values; verify two objects using one shader keep independent values
-- [ ] 5.4 Implement the unresolved-fill state for a fill referencing an unregistered shader; verify the document still loads and stays editable with the missing shader named
-- [ ] 5.5 Implement the store with document, selection, viewport, tool, and panel slices; verify each slice updates independently and the store composes them
-- [ ] 5.6 Implement selection covering single, additive, and cleared selection, removal from selection on delete, and locked objects falling through; verify each case
-- [ ] 5.7 Implement stacking-order operations and verify raising an object changes which object draws on top
-- [ ] 5.8 Implement patch-based undo and redo, including the redo stack clearing on a new edit; verify undo restores the prior state and redo reapplies
-- [ ] 5.9 Implement the transient channel that bypasses React during continuous drags and commits one history entry on release; verify a multi-value drag produces exactly one undo step and no React re-render between start and end
+- [ ] 5.1 Define the rendering port interface the canvas depends on, decoupled from WebGL; verify the application and document packages reference only this interface
+- [ ] 5.2 Implement context acquisition with an explicit unsupported result when WebGL2 is unavailable; verify the unsupported path is reported rather than throwing
+- [ ] 5.3 Implement the shader preamble supplying `vUv`, `uResolution`, and `uTime`, and the quad vertex stage producing the UV varying; verify a fixture shader renders correct object-local gradients under translation, scale, and rotation
+- [ ] 5.4 Implement program compilation and linking with failure reporting that includes the shader identifier and driver diagnostic; verify a deliberately broken shader reports both and leaves the application usable
+- [ ] 5.5 Implement the per-context program cache; verify one program is compiled when several objects share a shader and that reselecting a shader reuses the cache
+- [ ] 5.6 Implement schema-driven uniform binding for every parameter type, including repeatable groups bound as fixed-size arrays with an active-count uniform; verify bindings are set from values with no shader-specific code and that changing entry count does not recompile
+- [ ] 5.7 Implement the shared animation loop with display synchronization, idle suspension when nothing animates, and suspension while the document is hidden; verify frames stop when idle or hidden and resume on change or visibility
+- [ ] 5.8 Implement the elapsed-time source so animation speed is frame-rate independent and resumes without a jump after suspension; verify both properties under simulated frame-rate variation and a suspend-resume cycle
+- [ ] 5.9 Implement drawing-surface sizing at device pixel ratio with a configured maximum, responding to size changes; verify output matches after resize and that the ratio is capped
+- [ ] 5.10 Implement context-loss and restore handling that suspends draws, surfaces a message, and recreates resources on restore; verify the scene and parameter values are unchanged across a simulated loss and restore
+- [ ] 5.11 Implement resource release for removed objects and unused shaders, and full teardown on unmount; verify no graphics resources remain allocated after each
 
-## 6. Application shell
+## 6. Document model and state
 
-- [ ] 6.1 Implement the three-region layout with slot-injected region content; verify the canvas stage absorbs remaining width and substituted content renders without shell changes
-- [ ] 6.2 Implement panel collapse and restore with persistence; verify a collapsed panel stays collapsed across reload and restores to its prior width
-- [ ] 6.3 Implement panel resizing with clamped minimum and maximum widths and persistence; verify dragging past a limit clamps and widths survive reload
-- [ ] 6.4 Implement the floating toolbar positioned over the canvas stage, staying within stage bounds as panels change and blocking pointer input only within its own bounds; verify both under panel collapse and resize
-- [ ] 6.5 Implement region labeling and keyboard order across the shell; verify tab order is consistent, focus is never trapped without a dismiss action, and each region is announced distinctly
-- [ ] 6.6 Implement the unsupported-environment state replacing the canvas stage; verify the message appears instead of a blank canvas when the rendering context is unavailable
+- [ ] 6.1 Define the document model — objects with identifier, type, position, size, rotation, opacity, visibility, locked state, and fill, plus explicit stacking order; verify identifiers are unique on insert and order survives removal
+- [ ] 6.2 Implement rectangle, ellipse, and text object types, with text carrying content and type settings; verify each type constructs with the common properties and text carries its content
+- [ ] 6.3 Implement solid and shader fills, with shader fills holding per-object parameter values; verify two objects using one shader keep independent values
+- [ ] 6.4 Implement the unresolved-fill state for a fill referencing an unregistered shader; verify the document still loads and stays editable with the missing shader named
+- [ ] 6.5 Implement the store with document, selection, viewport, tool, and panel slices; verify each slice updates independently and the store composes them
+- [ ] 6.6 Implement selection covering single, additive, and cleared selection, removal from selection on delete, and locked objects falling through; verify each case
+- [ ] 6.7 Implement stacking-order operations and verify raising an object changes which object draws on top
+- [ ] 6.8 Implement patch-based undo and redo, including the redo stack clearing on a new edit; verify undo restores the prior state and redo reapplies
+- [ ] 6.9 Implement the transient channel that bypasses React during continuous drags and commits one history entry on release; verify a multi-value drag produces exactly one undo step and no React re-render between start and end
 
 ## 7. Canvas surface and tools
 
@@ -75,16 +75,18 @@
 
 ## 8. Inspector and parameter panel
 
-- [ ] 8.1 Implement schema-driven control generation for the selected object's shader; verify a shader registered by a test with no inspector changes renders complete controls
-- [ ] 8.2 Implement the control mapping for numeric, boolean, color, enum, and vector parameters honoring declared ranges, steps, and options; verify each type renders its control with its constraints applied
-- [ ] 8.3 Implement input validation clamping out-of-range values and reverting unparseable input without modifying the document; verify both
-- [ ] 8.4 Implement repeatable-group editing with add, remove, and reorder up to the declared maximum, and an explained unavailable state at the maximum; verify each and that remaining entries keep values
-- [ ] 8.5 Wire control edits to live canvas updates through the transient channel; verify the canvas updates continuously during a slider drag and values persist to the document
-- [ ] 8.6 Implement parameter grouping with collapsible groups and per-shader collapse persistence; verify declared order is preserved and collapse survives reselecting the shader
-- [ ] 8.7 Implement per-parameter and reset-all defaults, with reset-all as one undoable step and an at-default indication; verify each
-- [ ] 8.8 Implement preset selection applying values as a single undoable step; verify controls and canvas update and edited values are replaced
-- [ ] 8.9 Implement the empty, multiple-selection, and solid-fill panel states including the affordance to replace a solid fill with a shader; verify each state
-- [ ] 8.10 Implement the signed-out profile placeholder and donate affordance at the top of the inspector; verify they render without any authentication or network dependency
+- [ ] 8.1 Build the inspector's value primitives — slider, numeric input, text input, toggle, select, and color picker — on headless primitives; verify each renders from its declared inputs alone in isolation tests
+- [ ] 8.2 Build the inspector's container primitives — popover, collapsible, and scroll area — on headless primitives; verify each renders from its declared inputs alone and that the accessibility suite from 2.6 passes for every primitive
+- [ ] 8.3 Implement schema-driven control generation for the selected object's shader; verify a shader registered by a test with no inspector changes renders complete controls
+- [ ] 8.4 Implement the control mapping for numeric, boolean, color, enum, and vector parameters honoring declared ranges, steps, and options; verify each type renders its control with its constraints applied
+- [ ] 8.5 Implement input validation clamping out-of-range values and reverting unparseable input without modifying the document; verify both
+- [ ] 8.6 Implement repeatable-group editing with add, remove, and reorder up to the declared maximum, and an explained unavailable state at the maximum; verify each and that remaining entries keep values
+- [ ] 8.7 Wire control edits to live canvas updates through the transient channel; verify the canvas updates continuously during a slider drag and values persist to the document
+- [ ] 8.8 Implement parameter grouping with collapsible groups and per-shader collapse persistence; verify declared order is preserved and collapse survives reselecting the shader
+- [ ] 8.9 Implement per-parameter and reset-all defaults, with reset-all as one undoable step and an at-default indication; verify each
+- [ ] 8.10 Implement preset selection applying values as a single undoable step; verify controls and canvas update and edited values are replaced
+- [ ] 8.11 Implement the empty, multiple-selection, and solid-fill panel states including the affordance to replace a solid fill with a shader; verify each state
+- [ ] 8.12 Implement the signed-out profile placeholder and donate affordance at the top of the inspector; verify they render without any authentication or network dependency
 
 ## 9. Persistence, import, and export
 
