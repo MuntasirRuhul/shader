@@ -15,6 +15,14 @@ export interface AppShellProps {
   /** Panel widths and collapse state. Owned by the caller so it can persist. */
   readonly layout?: PanelLayout;
   readonly onResizePanel?: (side: PanelSide, width: number) => void;
+  /**
+   * Whether the browser can provide the rendering context the canvas needs.
+   * Supplied rather than detected here: the shell stays testable without a
+   * rendering context, and detection belongs to the runtime that owns it.
+   */
+  readonly renderingSupported?: boolean;
+  /** Names the requirement in the unsupported message, e.g. `WebGL2`. */
+  readonly renderingRequirement?: string;
 }
 
 function widthStyle(width: number): CSSProperties {
@@ -36,6 +44,8 @@ export function AppShell({
   toolbar,
   layout = DEFAULT_PANEL_LAYOUT,
   onResizePanel,
+  renderingSupported = true,
+  renderingRequirement = 'WebGL2',
 }: AppShellProps) {
   const renderPanel = (
     side: PanelSide,
@@ -73,12 +83,24 @@ export function AppShell({
       {renderPanel('library', 'Shader library', libraryPanel, 'Resize shader library')}
 
       <main aria-label="Canvas" className={styles.stage}>
-        <div className={styles.stageContent}>{stage}</div>
-        {toolbar !== undefined && (
-          <div className={styles.toolbar}>
-            <div aria-label="Canvas tools" className={styles.toolbarInner} role="toolbar">
-              {toolbar}
-            </div>
+        {renderingSupported ? (
+          <>
+            <div className={styles.stageContent}>{stage}</div>
+            {toolbar !== undefined && (
+              <div className={styles.toolbar}>
+                <div aria-label="Canvas tools" className={styles.toolbarInner} role="toolbar">
+                  {toolbar}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className={styles.unsupported} role="alert">
+            <h2 className={styles.unsupportedTitle}>{renderingRequirement} is required</h2>
+            <p className={styles.unsupportedBody}>
+              This browser cannot provide a {renderingRequirement} rendering context, so the canvas
+              cannot be drawn. Try a different browser, or enable hardware acceleration.
+            </p>
           </div>
         )}
       </main>

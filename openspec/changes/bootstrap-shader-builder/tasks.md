@@ -22,8 +22,8 @@
 - [x] 3.2 Implement panel collapse and restore with persistence; verify a collapsed panel stays collapsed across reload and restores to its prior width
 - [x] 3.3 Implement panel resizing with clamped minimum and maximum widths and persistence; verify dragging past a limit clamps and widths survive reload
 - [x] 3.4 Implement the floating toolbar positioned over the canvas stage, staying within stage bounds as panels change and blocking pointer input only within its own bounds; verify both under panel collapse and resize
-- [ ] 3.5 Implement region labeling and keyboard order across the shell; verify tab order is consistent, focus is never trapped without a dismiss action, and each region is announced distinctly
-- [ ] 3.6 Implement the unsupported-environment state replacing the canvas stage, with rendering support supplied to the shell rather than detected by it; verify the message appears instead of a blank canvas when support is reported unavailable, and that the shell needs no rendering context to be tested
+- [x] 3.5 Implement region labeling and keyboard order across the shell; verify tab order is consistent, focus is never trapped without a dismiss action, and each region is announced distinctly
+- [x] 3.6 Implement the unsupported-environment state replacing the canvas stage, with rendering support supplied to the shell rather than detected by it; verify the message appears instead of a blank canvas when support is reported unavailable, and that the shell needs no rendering context to be tested
 
 ## 4. Shader manifest, schema, and registry
 
