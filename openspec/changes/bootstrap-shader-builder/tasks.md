@@ -100,10 +100,10 @@
 
 ## 10. Mesh gradient shader port
 
-- [ ] 10.1 Port the mesh gradient GLSL to the `vUv` ABI; verify the ported shader compiles and renders equivalently to the reference experiment
-- [ ] 10.2 Author the mesh gradient parameter schema covering the repeatable pole group with per-entry position, color, and radius, plus scalar, color, enum, and boolean parameters; verify it passes manifest validation
-- [ ] 10.3 Author the mesh gradient presets and register the manifest; verify presets validate and the shader appears in the library with no shell, inspector, or runtime changes
-- [ ] 10.4 Verify the full pipeline end to end: create an object, apply the mesh gradient, edit every parameter type including adding and removing poles, undo and redo, export, reload, and import
+- [x] 10.1 Port the mesh gradient GLSL to the `vUv` ABI; verify the ported shader compiles and renders equivalently to the reference experiment
+- [x] 10.2 Author the mesh gradient parameter schema covering the repeatable pole group with per-entry position, color, and radius, plus scalar, color, enum, and boolean parameters; verify it passes manifest validation
+- [x] 10.3 Author the mesh gradient presets and register the manifest; verify presets validate and the shader appears in the library with no shell, inspector, or runtime changes
+- [x] 10.4 Verify the full pipeline end to end: create an object, apply the mesh gradient, edit every parameter type including adding and removing poles, undo and redo, export, reload, and import
 
 ## 11. Integration verification
 

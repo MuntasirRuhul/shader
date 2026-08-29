@@ -1,5 +1,6 @@
 import { ShaderRegistry, solidFillManifest } from '@shader/core';
 import { gradientBlurManifest } from './gradientBlur';
+import { meshGradientManifest } from './meshGradient';
 
 /**
  * The shaders the application ships with.
@@ -13,6 +14,7 @@ export const registry = new ShaderRegistry();
 // here but excluded from the library, since it is not something a user picks.
 registry.registerOrThrow(solidFillManifest);
 
+registry.registerOrThrow(meshGradientManifest);
 registry.registerOrThrow(gradientBlurManifest);
 
 /** The shaders offered in the library, excluding built-ins. */
