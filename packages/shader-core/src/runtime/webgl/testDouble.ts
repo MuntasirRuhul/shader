@@ -1,0 +1,229 @@
+import type {
+  GlContext,
+  GlProgram,
+  GlShader,
+  GlTexture,
+  GlUniformLocation,
+  GlVertexArray,
+} from './glTypes';
+
+/**
+ * A recording stand-in for WebGL2.
+ *
+ * The compiler, cache, and uniform binder hold the runtime's subtlest logic and
+ * would otherwise only be exercisable on a GPU. This double records every call
+ * so that behaviour — what got compiled, what got bound, what got deleted — can
+ * be asserted exactly, headlessly.
+ */
+
+export interface UniformWrite {
+  readonly name: string;
+  readonly value: number | readonly number[];
+}
+
+export interface FakeGlOptions {
+  /** Shader sources matching this fail to compile, as a broken shader would. */
+  readonly failCompileMatching?: RegExp;
+  /** When true, linking fails. */
+  readonly failLink?: boolean;
+  readonly compileDiagnostic?: string;
+  readonly linkDiagnostic?: string;
+}
+
+export class FakeGl implements GlContext {
+  readonly VERTEX_SHADER = 0x8b31;
+  readonly FRAGMENT_SHADER = 0x8b30;
+  readonly COMPILE_STATUS = 0x8b81;
+  readonly LINK_STATUS = 0x8b82;
+  readonly TRIANGLE_STRIP = 5;
+  readonly COLOR_BUFFER_BIT = 0x4000;
+  readonly BLEND = 0x0be2;
+  readonly SRC_ALPHA = 0x0302;
+  readonly ONE_MINUS_SRC_ALPHA = 0x0303;
+  readonly ONE = 1;
+  readonly TEXTURE_2D = 0x0de1;
+  readonly TEXTURE0 = 0x84c0;
+  readonly RGBA = 0x1908;
+  readonly UNSIGNED_BYTE = 0x1401;
+  readonly LINEAR = 0x2601;
+  readonly CLAMP_TO_EDGE = 0x812f;
+  readonly TEXTURE_MIN_FILTER = 0x2801;
+  readonly TEXTURE_MAG_FILTER = 0x2800;
+  readonly TEXTURE_WRAP_S = 0x2802;
+  readonly TEXTURE_WRAP_T = 0x2803;
+  readonly UNPACK_FLIP_Y_WEBGL = 0x9240;
+
+  /** Every source passed to a shader stage, in order. */
+  readonly compiledSources: string[] = [];
+  readonly uniformWrites: UniformWrite[] = [];
+  readonly drawCalls: { first: number; count: number }[] = [];
+  readonly deletedPrograms: GlProgram[] = [];
+  readonly deletedTextures: GlTexture[] = [];
+  readonly deletedShaders: GlShader[] = [];
+  readonly deletedVertexArrays: GlVertexArray[] = [];
+
+  liveShaders = 0;
+  livePrograms = 0;
+  liveTextures = 0;
+  liveVertexArrays = 0;
+  contextLost = false;
+
+  private readonly sourceByShader = new Map<GlShader, string>();
+  private readonly locationsByName = new Map<string, GlUniformLocation>();
+  private readonly nameByLocation = new Map<GlUniformLocation, string>();
+
+  constructor(private readonly options: FakeGlOptions = {}) {}
+
+  /** The uniform writes for one name, most recent last. */
+  writesTo(name: string): UniformWrite[] {
+    return this.uniformWrites.filter((write) => write.name === name);
+  }
+
+  lastWriteTo(name: string): UniformWrite | undefined {
+    return this.writesTo(name).at(-1);
+  }
+
+  reset(): void {
+    this.uniformWrites.length = 0;
+    this.drawCalls.length = 0;
+  }
+
+  createShader(): GlShader | null {
+    this.liveShaders += 1;
+    return {};
+  }
+
+  shaderSource(shader: GlShader, source: string): void {
+    this.sourceByShader.set(shader, source);
+    this.compiledSources.push(source);
+  }
+
+  compileShader(): void {}
+
+  getShaderParameter(shader: GlShader): unknown {
+    const source = this.sourceByShader.get(shader) ?? '';
+    return !this.options.failCompileMatching?.test(source);
+  }
+
+  getShaderInfoLog(): string | null {
+    return (
+      this.options.compileDiagnostic ?? "ERROR: 0:12: 'undefinedThing' : undeclared identifier"
+    );
+  }
+
+  deleteShader(shader: GlShader | null): void {
+    if (!shader) return;
+    this.deletedShaders.push(shader);
+    this.liveShaders -= 1;
+  }
+
+  createProgram(): GlProgram | null {
+    this.livePrograms += 1;
+    return {};
+  }
+
+  attachShader(): void {}
+  linkProgram(): void {}
+
+  getProgramParameter(): unknown {
+    return this.options.failLink !== true;
+  }
+
+  getProgramInfoLog(): string | null {
+    return this.options.linkDiagnostic ?? 'ERROR: linking failed: varying vUv not written';
+  }
+
+  deleteProgram(program: GlProgram | null): void {
+    if (!program) return;
+    this.deletedPrograms.push(program);
+    this.livePrograms -= 1;
+  }
+
+  useProgram(): void {}
+
+  getUniformLocation(_program: GlProgram, name: string): GlUniformLocation | null {
+    let location = this.locationsByName.get(name);
+    if (!location) {
+      location = {};
+      this.locationsByName.set(name, location);
+      this.nameByLocation.set(location, name);
+    }
+    return location;
+  }
+
+  private record(location: GlUniformLocation | null, value: number | readonly number[]): void {
+    if (!location) return;
+    const name = this.nameByLocation.get(location);
+    if (name === undefined) return;
+    this.uniformWrites.push({ name, value });
+  }
+
+  uniform1f(location: GlUniformLocation | null, x: number): void {
+    this.record(location, x);
+  }
+  uniform1i(location: GlUniformLocation | null, x: number): void {
+    this.record(location, x);
+  }
+  uniform2f(location: GlUniformLocation | null, x: number, y: number): void {
+    this.record(location, [x, y]);
+  }
+  uniform3f(location: GlUniformLocation | null, x: number, y: number, z: number): void {
+    this.record(location, [x, y, z]);
+  }
+  uniform1fv(location: GlUniformLocation | null, value: Float32Array): void {
+    this.record(location, [...value]);
+  }
+  uniform2fv(location: GlUniformLocation | null, value: Float32Array): void {
+    this.record(location, [...value]);
+  }
+  uniform3fv(location: GlUniformLocation | null, value: Float32Array): void {
+    this.record(location, [...value]);
+  }
+  uniformMatrix3fv(
+    location: GlUniformLocation | null,
+    _transpose: boolean,
+    value: Float32Array,
+  ): void {
+    this.record(location, [...value]);
+  }
+
+  createVertexArray(): GlVertexArray | null {
+    this.liveVertexArrays += 1;
+    return {};
+  }
+  bindVertexArray(): void {}
+  deleteVertexArray(vao: GlVertexArray | null): void {
+    if (!vao) return;
+    this.deletedVertexArrays.push(vao);
+    this.liveVertexArrays -= 1;
+  }
+
+  createTexture(): GlTexture | null {
+    this.liveTextures += 1;
+    return {};
+  }
+  bindTexture(): void {}
+  deleteTexture(texture: GlTexture | null): void {
+    if (!texture) return;
+    this.deletedTextures.push(texture);
+    this.liveTextures -= 1;
+  }
+  activeTexture(): void {}
+  texParameteri(): void {}
+  texImage2D(): void {}
+  pixelStorei(): void {}
+
+  viewport(): void {}
+  clearColor(): void {}
+  clear(): void {}
+  enable(): void {}
+  blendFuncSeparate(): void {}
+
+  drawArrays(_mode: number, first: number, count: number): void {
+    this.drawCalls.push({ first, count });
+  }
+
+  isContextLost(): boolean {
+    return this.contextLost;
+  }
+}

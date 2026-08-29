@@ -36,12 +36,12 @@
 
 ## 5. WebGL2 shader runtime
 
-- [ ] 5.1 Define the rendering port interface the canvas depends on, decoupled from WebGL; verify the application and document packages reference only this interface
-- [ ] 5.2 Implement context acquisition with an explicit unsupported result when WebGL2 is unavailable; verify the unsupported path is reported rather than throwing
-- [ ] 5.3 Implement the shader preamble supplying `vUv`, `uResolution`, and `uTime`, and the quad vertex stage producing the UV varying; verify a fixture shader renders correct object-local gradients under translation, scale, and rotation
-- [ ] 5.4 Implement program compilation and linking with failure reporting that includes the shader identifier and driver diagnostic; verify a deliberately broken shader reports both and leaves the application usable
-- [ ] 5.5 Implement the per-context program cache; verify one program is compiled when several objects share a shader and that reselecting a shader reuses the cache
-- [ ] 5.6 Implement schema-driven uniform binding for every parameter type, including repeatable groups bound as fixed-size arrays with an active-count uniform; verify bindings are set from values with no shader-specific code and that changing entry count does not recompile
+- [x] 5.1 Define the rendering port interface the canvas depends on, decoupled from WebGL; verify the application and document packages reference only this interface
+- [x] 5.2 Implement context acquisition with an explicit unsupported result when WebGL2 is unavailable; verify the unsupported path is reported rather than throwing
+- [x] 5.3 Implement the shader preamble supplying `vUv`, `uResolution`, and `uTime`, and the quad vertex stage producing the UV varying; verify a fixture shader renders correct object-local gradients under translation, scale, and rotation
+- [x] 5.4 Implement program compilation and linking with failure reporting that includes the shader identifier and driver diagnostic; verify a deliberately broken shader reports both and leaves the application usable
+- [x] 5.5 Implement the per-context program cache; verify one program is compiled when several objects share a shader and that reselecting a shader reuses the cache
+- [x] 5.6 Implement schema-driven uniform binding for every parameter type, including repeatable groups bound as fixed-size arrays with an active-count uniform; verify bindings are set from values with no shader-specific code and that changing entry count does not recompile
 - [ ] 5.7 Implement the shared animation loop with display synchronization, idle suspension when nothing animates, and suspension while the document is hidden; verify frames stop when idle or hidden and resume on change or visibility
 - [ ] 5.8 Implement the elapsed-time source so animation speed is frame-rate independent and resumes without a jump after suspension; verify both properties under simulated frame-rate variation and a suspend-resume cycle
 - [ ] 5.9 Implement drawing-surface sizing at device pixel ratio with a configured maximum, responding to size changes; verify output matches after resize and that the ratio is capped
