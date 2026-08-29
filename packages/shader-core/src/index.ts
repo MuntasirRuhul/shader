@@ -142,3 +142,19 @@ export {
   type ResolvedFill,
   type ShaderLookup,
 } from './document/fillResolution';
+
+export {
+  boundsOf,
+  centreOf,
+  enclosedBy,
+  hitTest,
+  rectFromPoints,
+  squareFromPoints,
+  toLocalSpace,
+  toUnitSpace,
+  unionBounds,
+  type Point,
+  type Rect,
+} from './canvas/geometry';
+
+export { isTargetable, objectAt, objectsAt, objectsWithin } from './canvas/hitTesting';

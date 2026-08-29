@@ -1,7 +1,18 @@
+import {
+  createRectangle,
+  resolvePreset,
+  shaderFill,
+  type ShaderManifest,
+  type ShaderPreset,
+} from '@shader/core';
 import { IconButton, ThemeProvider, Tooltip, TooltipProvider } from '@shader/design-system';
 import './global.css';
+import { CanvasStage } from './canvas/CanvasStage';
+import { ShaderLibrary } from './panels/ShaderLibrary';
+import { registry } from './shaders/registry';
 import { AppShell } from './shell/AppShell';
 import { usePanelLayout } from './shell/usePanelLayout';
+import { useEditorStore } from './store/editorStore';
 
 const cursorIcon = (
   <svg fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 16 16">
@@ -23,6 +34,27 @@ const textIcon = (
 
 export function App() {
   const { layout, setWidth } = usePanelLayout();
+  const document = useEditorStore((state) => state.document);
+  const tool = useEditorStore((state) => state.tool.active);
+  const setTool = useEditorStore((state) => state.setTool);
+  const addObject = useEditorStore((state) => state.addObject);
+
+  const placeShader = (manifest: ShaderManifest, preset: ShaderPreset) => {
+    // Cascade successive placements so a new object does not land exactly on
+    // the previous one and appear to replace it.
+    const step = (document.objects.length % 6) * 32;
+
+    addObject(
+      createRectangle({
+        name: preset.name,
+        x: 120 + step,
+        y: 100 + step,
+        width: 480,
+        height: 320,
+        fill: shaderFill(manifest.id, resolvePreset(manifest, preset.id), preset.id),
+      }),
+    );
+  };
 
   return (
     <ThemeProvider>
@@ -30,19 +62,40 @@ export function App() {
         <AppShell
           inspectorPanel={<p>Inspector</p>}
           layout={layout}
-          libraryPanel={<p>Shaders</p>}
+          libraryPanel={<ShaderLibrary onChoose={placeShader} shaders={registry.list()} />}
           onResizePanel={setWidth}
-          stage={<p>Canvas</p>}
+          stage={<CanvasStage document={document} registry={registry} />}
           toolbar={
             <>
               <Tooltip content="Select" shortcut="V">
-                <IconButton icon={cursorIcon} label="Select tool" selected />
+                <IconButton
+                  icon={cursorIcon}
+                  label="Select tool"
+                  onClick={() => {
+                    setTool('select');
+                  }}
+                  selected={tool === 'select'}
+                />
               </Tooltip>
               <Tooltip content="Shape" shortcut="R">
-                <IconButton icon={squareIcon} label="Shape tool" />
+                <IconButton
+                  icon={squareIcon}
+                  label="Shape tool"
+                  onClick={() => {
+                    setTool('shape');
+                  }}
+                  selected={tool === 'shape'}
+                />
               </Tooltip>
               <Tooltip content="Text" shortcut="T">
-                <IconButton icon={textIcon} label="Text tool" />
+                <IconButton
+                  icon={textIcon}
+                  label="Text tool"
+                  onClick={() => {
+                    setTool('text');
+                  }}
+                  selected={tool === 'text'}
+                />
               </Tooltip>
             </>
           }

@@ -1,0 +1,46 @@
+.library {
+  padding: var(--sb-space-5);
+}
+
+.heading {
+  margin: 0 0 var(--sb-space-4);
+  color: var(--sb-text-muted);
+  font-size: var(--sb-font-size-sm);
+  letter-spacing: var(--sb-letter-spacing-wide);
+  text-transform: uppercase;
+}
+
+.grid {
+  display: grid;
+  gap: var(--sb-space-4);
+  grid-template-columns: 1fr 1fr;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--sb-radius-lg);
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--sb-focus-ring);
+  outline-offset: 2px;
+}
+
+.card:hover .label {
+  display: block;
+  margin-top: var(--sb-space-3);
+  overflow: hidden;
+  color: var(--sb-text-secondary);
+  font-size: var(--sb-font-size-md);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
