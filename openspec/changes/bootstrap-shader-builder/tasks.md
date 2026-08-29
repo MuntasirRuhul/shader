@@ -13,8 +13,8 @@
 - [x] 2.2 Implement the build step emitting tokens as CSS custom properties per theme; verify the generated stylesheet contains every token in both themes
 - [x] 2.3 Implement the theme provider with system-preference default, explicit override, and persistence; verify tests cover system default, live system change, explicit override, and restore after reload
 - [x] 2.4 Add the lint rule rejecting literal color, spacing, radius, and typography values in component styles; verify a deliberate literal fails lint
-- [ ] 2.5 Build the primitives the application shell needs — button, icon button, and tooltip — on headless primitives; verify each renders from its declared inputs alone in isolation tests
-- [ ] 2.6 Add the keyboard and assistive-technology test suite covering reachability, activation, dismissal, visible focus, focus trapping and restoration, and exposed role, name, and state; verify it passes for every primitive built so far, and re-run it as later primitives land
+- [x] 2.5 Build the primitives the application shell needs — button, icon button, and tooltip — on headless primitives; verify each renders from its declared inputs alone in isolation tests
+- [x] 2.6 Add the keyboard and assistive-technology test suite covering reachability, activation, dismissal, visible focus, focus trapping and restoration, and exposed role, name, and state; verify it passes for every primitive built so far, and re-run it as later primitives land
 
 ## 3. Application shell
 

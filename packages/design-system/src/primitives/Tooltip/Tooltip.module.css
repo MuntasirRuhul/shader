@@ -1,0 +1,25 @@
+.content {
+  z-index: 30;
+  max-width: 260px;
+  padding: var(--sb-space-3) var(--sb-space-4);
+  border: 1px solid var(--sb-border-default);
+  border-radius: var(--sb-radius-md);
+  background-color: var(--sb-surface-overlay);
+  box-shadow: var(--sb-shadow-popover);
+  color: var(--sb-text-primary);
+  font-family: var(--sb-font-sans);
+  font-size: var(--sb-font-size-md);
+  line-height: var(--sb-line-height-normal);
+  user-select: none;
+}
+
+.arrow {
+  fill: var(--sb-surface-overlay);
+}
+
+.shortcut {
+  margin-left: var(--sb-space-3);
+  color: var(--sb-text-muted);
+  font-family: var(--sb-font-mono);
+  font-size: var(--sb-font-size-sm);
+}

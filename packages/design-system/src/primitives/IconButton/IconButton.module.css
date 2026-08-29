@@ -1,0 +1,51 @@
+.iconButton {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--sb-radius-md);
+  background-color: transparent;
+  color: var(--sb-text-secondary);
+  cursor: pointer;
+  transition-duration: var(--sb-duration-fast);
+  transition-property: background-color, border-color, color;
+  transition-timing-function: var(--sb-easing-standard);
+}
+
+.iconButton:focus-visible {
+  outline: 2px solid var(--sb-focus-ring);
+  outline-offset: 2px;
+}
+
+.iconButton:disabled {
+  color: var(--sb-text-disabled);
+  cursor: not-allowed;
+}
+
+.iconButton:hover:not(:disabled, .selected) {
+  background-color: var(--sb-control-hover);
+  color: var(--sb-text-primary);
+}
+
+/* The active tool or the open panel reads as selected rather than merely hovered. */
+.selected {
+  background-color: var(--sb-control-selected);
+  color: var(--sb-accent-text);
+}
+
+.sm {
+  width: var(--sb-space-8);
+  height: var(--sb-space-8);
+}
+
+.md {
+  width: var(--sb-space-9);
+  height: var(--sb-space-9);
+}
+
+.icon {
+  display: block;
+  width: var(--sb-space-6);
+  height: var(--sb-space-6);
+}

@@ -7,6 +7,9 @@ const fromRoot = (relativePath: string): string =>
 
 const domSetup = [fromRoot('./test/setup.ts')];
 
+/** Unscoped class names keep CSS Module assertions readable in tests. */
+const cssModules = { modules: { classNameStrategy: 'non-scoped' } } as const;
+
 export default defineConfig({
   test: {
     projects: [
@@ -26,6 +29,7 @@ export default defineConfig({
           root: fromRoot('./packages/design-system'),
           environment: 'jsdom',
           setupFiles: domSetup,
+          css: cssModules,
           include: ['src/**/*.test.{ts,tsx}'],
         },
       },
@@ -45,6 +49,7 @@ export default defineConfig({
           root: fromRoot('./apps/studio'),
           environment: 'jsdom',
           setupFiles: domSetup,
+          css: cssModules,
           include: ['src/**/*.test.{ts,tsx}'],
         },
       },
