@@ -1,4 +1,4 @@
-import { boundsOf, type CanvasDocument, type Rect } from '@shader/core';
+import type { CanvasDocument, Rect } from '@shader/core';
 import type { Selection } from '../store/selection';
 import type { ViewportState } from '../store/slices';
 import { gestureRect, selectionBounds, type Gesture } from './interaction';
@@ -91,15 +91,4 @@ function rotateHandleStyle(bounds: Rect, viewport: ViewportState) {
     left: `${String(top.x)}px`,
     top: `${String(top.y - ROTATE_HANDLE_OFFSET)}px`,
   };
-}
-
-/** The bounds an object occupies, for callers that need one object's box. */
-export function objectScreenBounds(
-  document: CanvasDocument,
-  objectId: string,
-  viewport: ViewportState,
-): Rect | undefined {
-  const object = document.objects.find((candidate) => candidate.id === objectId);
-  if (!object) return undefined;
-  return canvasRectToScreen(boundsOf(object), viewport);
 }

@@ -1,0 +1,32 @@
+.field {
+  width: 100%;
+  height: var(--sb-space-8);
+  padding: 0 var(--sb-space-4);
+  border: 1px solid var(--sb-border-default);
+  border-radius: var(--sb-radius-md);
+  background-color: var(--sb-surface-raised);
+  color: var(--sb-text-primary);
+  font-family: var(--sb-font-sans);
+  font-size: var(--sb-font-size-md);
+}
+
+.field:disabled {
+  color: var(--sb-text-disabled);
+  cursor: not-allowed;
+}
+
+.field:focus-visible {
+  border-color: var(--sb-accent-solid);
+  outline: 2px solid var(--sb-focus-ring);
+  outline-offset: -1px;
+}
+
+.field:hover:not(:disabled, :focus-visible) {
+  border-color: var(--sb-border-strong);
+}
+
+.numeric {
+  font-family: var(--sb-font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}

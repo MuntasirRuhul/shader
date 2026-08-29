@@ -38,10 +38,27 @@ export interface AccessibilityCase {
     readonly attribute: string;
     readonly value: string;
   };
+  /** Tab presses needed to reach the control, when it is not the first stop. */
+  readonly tabsToReach?: number;
+  /**
+   * False for a control where Enter is a commit gesture that deliberately
+   * moves focus away, as in a numeric field.
+   */
+  readonly activationKeepsFocus?: boolean;
 }
 
 function renderCase(testCase: AccessibilityCase): RenderResult {
   return render(testCase.render());
+}
+
+/** Tabs until the case's control has focus. */
+async function tabTo(
+  user: ReturnType<typeof userEvent.setup>,
+  testCase: AccessibilityCase,
+): Promise<void> {
+  for (let step = 0; step < (testCase.tabsToReach ?? 1); step += 1) {
+    await user.tab();
+  }
 }
 
 export function runAccessibilitySuite(testCase: AccessibilityCase): void {
@@ -58,7 +75,7 @@ export function runAccessibilitySuite(testCase: AccessibilityCase): void {
       const user = userEvent.setup();
       renderCase(testCase);
 
-      await user.tab();
+      await tabTo(user, testCase);
 
       expect(screen.getByRole(testCase.role, { name: testCase.accessibleName })).toHaveFocus();
     });
@@ -67,7 +84,7 @@ export function runAccessibilitySuite(testCase: AccessibilityCase): void {
       const user = userEvent.setup();
       renderCase(testCase);
 
-      await user.tab();
+      await tabTo(user, testCase);
       const control = screen.getByRole(testCase.role, { name: testCase.accessibleName });
 
       expect(control).toHaveFocus();
@@ -78,12 +95,15 @@ export function runAccessibilitySuite(testCase: AccessibilityCase): void {
       const user = userEvent.setup();
       renderCase(testCase);
 
-      await user.tab();
-      // Neither key may throw, and focus must survive activation.
+      await tabTo(user, testCase);
       await user.keyboard('{Enter}');
       await user.keyboard(' ');
 
-      expect(document.activeElement).not.toBe(document.body);
+      // Neither key may throw. Focus survives unless activation is itself a
+      // commit gesture that moves it, as in a numeric field.
+      if (testCase.activationKeepsFocus !== false) {
+        expect(document.activeElement).not.toBe(document.body);
+      }
     });
 
     if (testCase.state) {
@@ -105,7 +125,7 @@ export function runAccessibilitySuite(testCase: AccessibilityCase): void {
         const user = userEvent.setup();
         renderCase(testCase);
 
-        await user.tab();
+        await tabTo(user, testCase);
         await layer.open(user);
 
         expect(await screen.findAllByText(layer.contentText)).not.toHaveLength(0);
@@ -115,7 +135,7 @@ export function runAccessibilitySuite(testCase: AccessibilityCase): void {
         const user = userEvent.setup();
         renderCase(testCase);
 
-        await user.tab();
+        await tabTo(user, testCase);
         await layer.open(user);
         await screen.findAllByText(layer.contentText);
 
@@ -128,7 +148,7 @@ export function runAccessibilitySuite(testCase: AccessibilityCase): void {
         const user = userEvent.setup();
         renderCase(testCase);
 
-        await user.tab();
+        await tabTo(user, testCase);
         await layer.open(user);
         await screen.findAllByText(layer.contentText);
 
@@ -142,7 +162,7 @@ export function runAccessibilitySuite(testCase: AccessibilityCase): void {
           const user = userEvent.setup();
           renderCase(testCase);
 
-          await user.tab();
+          await tabTo(user, testCase);
           await layer.open(user);
           const content = (await screen.findAllByText(layer.contentText))[0];
 

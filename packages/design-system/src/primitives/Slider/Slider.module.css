@@ -1,0 +1,44 @@
+.root {
+  display: flex;
+  position: relative;
+  align-items: center;
+  width: 100%;
+  height: var(--sb-space-7);
+  touch-action: none;
+  user-select: none;
+}
+
+.track {
+  position: relative;
+  flex-grow: 1;
+  height: var(--sb-space-1);
+  border-radius: var(--sb-radius-full);
+  background-color: var(--sb-control-track);
+}
+
+.range {
+  position: absolute;
+  height: 100%;
+  border-radius: var(--sb-radius-full);
+  background-color: var(--sb-control-fill);
+}
+
+.thumb {
+  display: block;
+  width: var(--sb-space-5);
+  height: var(--sb-space-5);
+  border: 1px solid var(--sb-border-strong);
+  border-radius: var(--sb-radius-full);
+  background-color: var(--sb-control-thumb);
+  box-shadow: var(--sb-shadow-sm);
+  cursor: grab;
+}
+
+.thumb:focus-visible {
+  outline: 2px solid var(--sb-focus-ring);
+  outline-offset: 2px;
+}
+
+.thumb:active {
+  cursor: grabbing;
+}

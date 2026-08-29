@@ -75,8 +75,8 @@
 
 ## 8. Inspector and parameter panel
 
-- [ ] 8.1 Build the inspector's value primitives — slider, numeric input, text input, toggle, select, and color picker — on headless primitives; verify each renders from its declared inputs alone in isolation tests
-- [ ] 8.2 Build the inspector's container primitives — popover, collapsible, and scroll area — on headless primitives; verify each renders from its declared inputs alone and that the accessibility suite from 2.6 passes for every primitive
+- [x] 8.1 Build the inspector's value primitives — slider, numeric input, text input, toggle, select, and color picker — on headless primitives; verify each renders from its declared inputs alone in isolation tests
+- [x] 8.2 Build the inspector's container primitives — popover, collapsible, and scroll area — on headless primitives; verify each renders from its declared inputs alone and that the accessibility suite from 2.6 passes for every primitive
 - [ ] 8.3 Implement schema-driven control generation for the selected object's shader; verify a shader registered by a test with no inspector changes renders complete controls
 - [ ] 8.4 Implement the control mapping for numeric, boolean, color, enum, and vector parameters honoring declared ranges, steps, and options; verify each type renders its control with its constraints applied
 - [ ] 8.5 Implement input validation clamping out-of-range values and reverting unparseable input without modifying the document; verify both

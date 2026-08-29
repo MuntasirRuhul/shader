@@ -1,0 +1,42 @@
+.field {
+  display: flex;
+  align-items: center;
+  gap: var(--sb-space-3);
+  width: 100%;
+}
+
+.swatchWrapper {
+  position: relative;
+  flex-shrink: 0;
+  width: var(--sb-space-8);
+  height: var(--sb-space-8);
+}
+
+.swatch {
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--sb-border-strong);
+  border-radius: var(--sb-radius-md);
+  cursor: pointer;
+}
+
+.swatch:focus-visible {
+  outline: 2px solid var(--sb-focus-ring);
+  outline-offset: 2px;
+}
+
+/*
+ * The native picker sits invisibly over the swatch, so the platform's own
+ * colour interface opens while the visible control stays ours.
+ */
+.nativeInput {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.hex {
+  flex: 1;
+  min-width: 0;
+}

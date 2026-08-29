@@ -36,10 +36,26 @@ function focusVisibleRules(source: string): string[] {
   return rules;
 }
 
+/** Rule bodies that contain a declaration matching the pattern. */
+function rulesDeclaring(source: string, pattern: RegExp): string[] {
+  const bodies: string[] = [];
+  const rule = /\{([^{}]*)\}/g;
+  let match: RegExpExecArray | null;
+  while ((match = rule.exec(source)) !== null) {
+    const body = match[1] ?? '';
+    if (pattern.test(body)) bodies.push(body);
+  }
+  return bodies;
+}
+
 const stylesheets = stylesheetsIn(primitivesDir);
 
 /** Stylesheets for primitives that render no focusable control of their own. */
-const NON_FOCUSABLE = new Set(['Tooltip/Tooltip.module.css']);
+const NON_FOCUSABLE = new Set([
+  'Tooltip/Tooltip.module.css',
+  // A scroll region hosts content; it owns no focusable control of its own.
+  'ScrollArea/ScrollArea.module.css',
+]);
 
 describe('primitive focus indicators', () => {
   it('finds the primitive stylesheets to check', () => {
@@ -65,14 +81,21 @@ describe('primitive focus indicators', () => {
     }
   });
 
-  it.each(stylesheets)('$name never suppresses focus outright', ({ source }) => {
-    // `outline: none` outside a :focus-visible rule that replaces it removes
-    // the indicator for keyboard users.
-    const suppressions = /outline:\s*none/.test(source);
-    const replaced = focusVisibleRules(source).some((body) =>
+  it.each(stylesheets)('$name never suppresses focus without replacing it', ({ source }) => {
+    // `outline: none` is only acceptable where something else marks the
+    // element out — a background or border change in the same rule, or a ring
+    // supplied by a :focus-visible rule elsewhere in the sheet.
+    const ringElsewhere = focusVisibleRules(source).some((body) =>
       /box-shadow:\s*(?!none)[^;]+/.test(body),
     );
 
-    expect(suppressions && !replaced).toBe(false);
+    for (const rule of rulesDeclaring(source, /outline:\s*none/)) {
+      const marksOut =
+        /background-color:\s*(?!transparent)[^;]+/.test(rule) ||
+        /border-color:\s*(?!transparent)[^;]+/.test(rule) ||
+        ringElsewhere;
+
+      expect(marksOut, `outline: none with no replacement in: ${rule.trim()}`).toBe(true);
+    }
   });
 });
