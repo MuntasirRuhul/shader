@@ -49,3 +49,38 @@ export {
   type RegistrationResult,
   type ShaderSummary,
 } from './registry/ShaderRegistry';
+
+export {
+  type RenderingPort,
+  type RenderItem,
+  type RenderScene,
+  type RenderTransform,
+  type RuntimeObserver,
+  type RuntimeStatus,
+  type ShaderCompileFailure,
+  type TexSource,
+} from './runtime/renderingPort';
+
+export {
+  AnimationLoop,
+  browserLoopEnvironment,
+  MAX_FRAME_DELTA_MS,
+  type AnimationLoopOptions,
+  type LoopEnvironment,
+} from './runtime/AnimationLoop';
+
+export {
+  computeSurfaceSize,
+  matchesSurfaceSize,
+  MAX_DEVICE_PIXEL_RATIO,
+  type SurfaceSize,
+} from './runtime/surfaceSize';
+
+export { acquireContext, isRenderingSupported } from './runtime/webgl/context';
+export {
+  composeFragmentSource,
+  QUAD_VERTEX_SOURCE,
+  RESERVED_UNIFORMS,
+} from './runtime/webgl/shaderAbi';
+export { buildModelMatrix } from './runtime/webgl/transform';
+export { WebGlRenderer, type WebGlRendererOptions } from './runtime/webgl/WebGlRenderer';
