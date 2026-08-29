@@ -6,3 +6,9 @@ declare module '*.module.css' {
   const classes: Readonly<Record<string, string>>;
   export default classes;
 }
+
+/** Vite's `?raw` suffix imports a file's contents as a string. */
+declare module '*?raw' {
+  const contents: string;
+  export default contents;
+}

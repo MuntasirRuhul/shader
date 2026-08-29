@@ -1,0 +1,21 @@
+@import url('@shader/design-system/tokens.css');
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--sb-surface-canvas);
+  color: var(--sb-text-primary);
+  font-family: var(--sb-font-sans);
+  font-size: var(--sb-font-size-lg);
+  line-height: var(--sb-line-height-normal);
+  -webkit-font-smoothing: antialiased;
+}
