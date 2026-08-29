@@ -50,15 +50,15 @@
 
 ## 6. Document model and state
 
-- [ ] 6.1 Define the document model — objects with identifier, type, position, size, rotation, opacity, visibility, locked state, and fill, plus explicit stacking order; verify identifiers are unique on insert and order survives removal
-- [ ] 6.2 Implement rectangle, ellipse, and text object types, with text carrying content and type settings; verify each type constructs with the common properties and text carries its content
-- [ ] 6.3 Implement solid and shader fills, with shader fills holding per-object parameter values; verify two objects using one shader keep independent values
-- [ ] 6.4 Implement the unresolved-fill state for a fill referencing an unregistered shader; verify the document still loads and stays editable with the missing shader named
-- [ ] 6.5 Implement the store with document, selection, viewport, tool, and panel slices; verify each slice updates independently and the store composes them
-- [ ] 6.6 Implement selection covering single, additive, and cleared selection, removal from selection on delete, and locked objects falling through; verify each case
-- [ ] 6.7 Implement stacking-order operations and verify raising an object changes which object draws on top
-- [ ] 6.8 Implement patch-based undo and redo, including the redo stack clearing on a new edit; verify undo restores the prior state and redo reapplies
-- [ ] 6.9 Implement the transient channel that bypasses React during continuous drags and commits one history entry on release; verify a multi-value drag produces exactly one undo step and no React re-render between start and end
+- [x] 6.1 Define the document model — objects with identifier, type, position, size, rotation, opacity, visibility, locked state, and fill, plus explicit stacking order; verify identifiers are unique on insert and order survives removal
+- [x] 6.2 Implement rectangle, ellipse, and text object types, with text carrying content and type settings; verify each type constructs with the common properties and text carries its content
+- [x] 6.3 Implement solid and shader fills, with shader fills holding per-object parameter values; verify two objects using one shader keep independent values
+- [x] 6.4 Implement the unresolved-fill state for a fill referencing an unregistered shader; verify the document still loads and stays editable with the missing shader named
+- [x] 6.5 Implement the store with document, selection, viewport, tool, and panel slices; verify each slice updates independently and the store composes them
+- [x] 6.6 Implement selection covering single, additive, and cleared selection, removal from selection on delete, and locked objects falling through; verify each case
+- [x] 6.7 Implement stacking-order operations and verify raising an object changes which object draws on top
+- [x] 6.8 Implement patch-based undo and redo, including the redo stack clearing on a new edit; verify undo restores the prior state and redo reapplies
+- [x] 6.9 Implement the transient channel that bypasses React during continuous drags and commits one history entry on release; verify a multi-value drag produces exactly one undo step and no React re-render between start and end
 
 ## 7. Canvas surface and tools
 

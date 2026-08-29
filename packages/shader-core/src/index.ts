@@ -84,3 +84,61 @@ export {
 } from './runtime/webgl/shaderAbi';
 export { buildModelMatrix } from './runtime/webgl/transform';
 export { WebGlRenderer, type WebGlRendererOptions } from './runtime/webgl/WebGlRenderer';
+
+export {
+  createDocument,
+  createEllipse,
+  createRectangle,
+  createText,
+  DEFAULT_FILL,
+  DEFAULT_TEXT_SETTINGS,
+  DOCUMENT_VERSION,
+  isCanvasObjectType,
+  isShaderFill,
+  isSolidFill,
+  isTextObject,
+  nextObjectId,
+  OBJECT_TYPES,
+  resetObjectIds,
+  shaderFill,
+  solidFill,
+  type CanvasDocument,
+  type CanvasObject,
+  type CanvasObjectType,
+  type EllipseObject,
+  type Fill,
+  type RectangleObject,
+  type ShaderFill,
+  type SolidFill,
+  type TextObject,
+  type TextSettings,
+} from './document/model';
+
+export {
+  addObject,
+  addObjects,
+  bringToFront,
+  findObject,
+  lowerObject,
+  objectIndex,
+  raiseObject,
+  referencedShaderIds,
+  removeObject,
+  removeObjects,
+  reorderObject,
+  replaceShaderValues,
+  sendToBack,
+  setFill,
+  setShaderValues,
+  updateObject,
+  visibleObjects,
+} from './document/operations';
+
+export {
+  describeMissingShader,
+  isUnresolved,
+  resolveFill,
+  unresolvedObjects,
+  type ResolvedFill,
+  type ShaderLookup,
+} from './document/fillResolution';
