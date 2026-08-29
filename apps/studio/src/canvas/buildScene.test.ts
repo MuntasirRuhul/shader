@@ -5,6 +5,7 @@ import {
   resetObjectIds,
   shaderFill,
   solidFill,
+  SOLID_FILL_SHADER_ID,
   type CanvasDocument,
   type TexSource,
 } from '@shader/core';
@@ -103,12 +104,31 @@ describe('what the scene leaves out', () => {
     expect(buildScene(seeded).items.map((item) => item.objectId)).toEqual(['shown']);
   });
 
-  it('omits an object with a solid fill, which needs no shader program', () => {
+  it('draws a solid fill through the built-in shader', () => {
     const seeded = addObjects(document, [
       createRectangle({ id: 'solid', fill: solidFill('#ffffff') }),
     ]);
 
-    expect(buildScene(seeded).items).toEqual([]);
+    // A plain object still has to be drawn, in the right place in the order.
+    expect(buildScene(seeded).items[0]).toMatchObject({
+      objectId: 'solid',
+      shaderId: SOLID_FILL_SHADER_ID,
+      values: { color: '#ffffff' },
+    });
+  });
+
+  it('interleaves solid and shader fills in stacking order', () => {
+    const seeded = addObjects(document, [
+      createRectangle({ id: 'back', fill: solidFill('#000000') }),
+      createRectangle({ id: 'middle', fill: shaderFill('s') }),
+      createRectangle({ id: 'front', fill: solidFill('#ffffff') }),
+    ]);
+
+    expect(buildScene(seeded).items.map((item) => item.objectId)).toEqual([
+      'back',
+      'middle',
+      'front',
+    ]);
   });
 });
 

@@ -23,8 +23,7 @@
   display: block;
   width: 100%;
   padding: 0;
-  border: 1px solid transparent;
-  border-radius: var(--sb-radius-lg);
+  border: none;
   background: none;
   cursor: pointer;
   text-align: left;
@@ -35,7 +34,15 @@
   outline-offset: 2px;
 }
 
-.card:hover .label {
+.swatch {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border: 1px solid var(--sb-border-default);
+  border-radius: var(--sb-radius-lg);
+}
+
+.label {
   display: block;
   margin-top: var(--sb-space-3);
   overflow: hidden;
@@ -43,4 +50,12 @@
   font-size: var(--sb-font-size-md);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.card:hover .swatch {
+  border-color: var(--sb-border-strong);
+}
+
+.card:hover .label {
+  color: var(--sb-text-primary);
 }

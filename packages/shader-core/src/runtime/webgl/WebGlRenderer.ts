@@ -54,6 +54,14 @@ export class WebGlRenderer implements RenderingPort {
   private readonly masks = new Map<string, MaskTexture>();
   private vao: GlVertexArray | null = null;
 
+  /**
+   * The surface's CSS size, which is what object coordinates are expressed in.
+   * The drawing buffer is larger on a high-density display, so mapping objects
+   * through the buffer size would draw everything at 1/ratio scale.
+   */
+  private cssWidth: number;
+  private cssHeight: number;
+
   private scene: RenderScene = { items: [] };
   private currentStatus: RuntimeStatus = { kind: 'ready' };
   private disposed = false;
@@ -68,6 +76,9 @@ export class WebGlRenderer implements RenderingPort {
     this.observer = options.observer ?? {};
     this.readDevicePixelRatio = options.devicePixelRatio ?? (() => 1);
     this.sizing = options.sizing ?? {};
+
+    this.cssWidth = options.surface.width;
+    this.cssHeight = options.surface.height;
 
     this.programs = new ProgramCache(this.gl);
     this.vao = this.gl.createVertexArray();
@@ -93,6 +104,9 @@ export class WebGlRenderer implements RenderingPort {
 
   resize(cssWidth: number, cssHeight: number): void {
     if (this.disposed) return;
+
+    this.cssWidth = cssWidth;
+    this.cssHeight = cssHeight;
 
     const size = computeSurfaceSize(cssWidth, cssHeight, this.readDevicePixelRatio(), this.sizing);
     if (matchesSurfaceSize(this.surface, size)) return;
@@ -150,7 +164,7 @@ export class WebGlRenderer implements RenderingPort {
     gl.uniformMatrix3fv(
       location('uModel'),
       false,
-      buildModelMatrix(item.transform, this.surface.width, this.surface.height),
+      buildModelMatrix(item.transform, this.cssWidth, this.cssHeight),
     );
     gl.uniform2f(
       location(RESERVED_UNIFORMS.resolution),

@@ -158,3 +158,5 @@ export {
 } from './canvas/geometry';
 
 export { isTargetable, objectAt, objectsAt, objectsWithin } from './canvas/hitTesting';
+
+export { SOLID_FILL_SHADER_ID, solidFillManifest } from './runtime/solidShader';

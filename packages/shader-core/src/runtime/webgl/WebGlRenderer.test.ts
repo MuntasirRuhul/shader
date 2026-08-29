@@ -201,6 +201,28 @@ describe('resizing the drawing surface', () => {
     expect(surface).toEqual({ width: 800, height: 600 });
   });
 
+  it('maps object coordinates through the CSS size, not the drawing buffer', () => {
+    // On a high-density display the buffer is larger than the CSS box. Mapping
+    // objects through the buffer would draw everything at 1/ratio scale.
+    const renderer = createRenderer({ devicePixelRatio: () => 2 });
+    renderer.resize(800, 600);
+    renderer.setScene(
+      scene(item({ transform: { x: 0, y: 0, width: 800, height: 600, rotation: 0 } })),
+    );
+    renderer.renderFrame(0);
+
+    const matrix = gl.lastWriteTo('uModel')?.value as number[];
+    // An object filling the CSS box must fill clip space: the unit quad maps
+    // from -1 to +1 across both axes.
+    const originX = matrix[6] ?? 0;
+    const originY = matrix[7] ?? 0;
+    const spanX = matrix[0] ?? 0;
+
+    expect(originX).toBeCloseTo(-1, 5);
+    expect(originY).toBeCloseTo(1, 5);
+    expect(spanX).toBeCloseTo(2, 5);
+  });
+
   it('renders into the resized viewport', () => {
     const renderer = createRenderer({ devicePixelRatio: () => 1 });
     renderer.resize(500, 250);

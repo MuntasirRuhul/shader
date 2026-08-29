@@ -9,7 +9,7 @@ import { IconButton, ThemeProvider, Tooltip, TooltipProvider } from '@shader/des
 import './global.css';
 import { CanvasStage } from './canvas/CanvasStage';
 import { ShaderLibrary } from './panels/ShaderLibrary';
-import { registry } from './shaders/registry';
+import { libraryShaders, registry } from './shaders/registry';
 import { AppShell } from './shell/AppShell';
 import { usePanelLayout } from './shell/usePanelLayout';
 import { useEditorStore } from './store/editorStore';
@@ -62,9 +62,9 @@ export function App() {
         <AppShell
           inspectorPanel={<p>Inspector</p>}
           layout={layout}
-          libraryPanel={<ShaderLibrary onChoose={placeShader} shaders={registry.list()} />}
+          libraryPanel={<ShaderLibrary onChoose={placeShader} shaders={libraryShaders()} />}
           onResizePanel={setWidth}
-          stage={<CanvasStage document={document} registry={registry} />}
+          stage={<CanvasStage registry={registry} />}
           toolbar={
             <>
               <Tooltip content="Select" shortcut="V">

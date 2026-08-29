@@ -1,5 +1,6 @@
 import {
   isShaderFill,
+  SOLID_FILL_SHADER_ID,
   type CanvasDocument,
   type CanvasObject,
   type RenderItem,
@@ -10,9 +11,10 @@ import {
 /**
  * Turns a document into the scene the renderer draws.
  *
- * Only objects that are visible and carry a shader fill become render items —
- * a solid fill needs no shader program, and a hidden object needs no work at
- * all. Document order is preserved, so the scene arrives back to front.
+ * Every visible object becomes a render item. A solid fill is drawn by a
+ * built-in shader rather than by a separate path, so plain and shader-filled
+ * objects interleave correctly in the stacking order and share opacity and
+ * masking. Document order is preserved, so the scene arrives back to front.
  */
 
 export interface SceneOptions {
@@ -25,14 +27,15 @@ export function buildScene(document: CanvasDocument, options: SceneOptions = {})
 
   for (const object of document.objects) {
     if (!object.visible) continue;
-    if (!isShaderFill(object.fill)) continue;
 
     const mask = options.maskFor?.(object);
+    const shaderId = isShaderFill(object.fill) ? object.fill.shaderId : SOLID_FILL_SHADER_ID;
+    const values = isShaderFill(object.fill) ? object.fill.values : { color: object.fill.color };
 
     items.push({
       objectId: object.id,
-      shaderId: object.fill.shaderId,
-      values: object.fill.values,
+      shaderId,
+      values,
       transform: {
         x: object.x,
         y: object.y,

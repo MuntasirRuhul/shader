@@ -23,3 +23,17 @@
   font-size: var(--sb-font-size-lg);
   pointer-events: none;
 }
+
+.zoomLevel {
+  position: absolute;
+  right: var(--sb-space-5);
+  bottom: var(--sb-space-5);
+  padding: var(--sb-space-2) var(--sb-space-4);
+  border: 1px solid var(--sb-border-default);
+  border-radius: var(--sb-radius-md);
+  background-color: var(--sb-surface-overlay);
+  color: var(--sb-text-secondary);
+  font-size: var(--sb-font-size-md);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}

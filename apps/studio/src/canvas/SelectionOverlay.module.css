@@ -1,0 +1,67 @@
+.overlay {
+  position: absolute;
+  inset: 0;
+
+  /* The overlay is a display layer; the canvas beneath handles the pointer. */
+  pointer-events: none;
+}
+
+.bounds,
+.multipleBounds,
+.marquee,
+.drawRect,
+.drawEllipse {
+  position: absolute;
+}
+
+.bounds {
+  border: 1px solid var(--sb-accent-solid);
+}
+
+/* A multiple selection reads as a looser enclosure than a single object. */
+.multipleBounds {
+  border: 1px dashed var(--sb-accent-solid);
+}
+
+.marquee {
+  border: 1px solid var(--sb-accent-solid);
+  background-color: var(--sb-accent-subtle);
+  opacity: 0.55;
+}
+
+.drawRect {
+  border: 1px solid var(--sb-accent-solid);
+  background-color: var(--sb-accent-subtle);
+}
+
+.drawEllipse {
+  border: 1px solid var(--sb-accent-solid);
+  border-radius: var(--sb-radius-full);
+  background-color: var(--sb-accent-subtle);
+}
+
+.handle,
+.rotateHandle {
+  position: absolute;
+  width: var(--sb-space-4);
+  height: var(--sb-space-4);
+  border: 1px solid var(--sb-accent-solid);
+  background-color: var(--sb-surface-panel);
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+
+.handle[data-handle='top-left'],
+.handle[data-handle='bottom-right'] {
+  cursor: nwse-resize;
+}
+
+.handle[data-handle='top-right'],
+.handle[data-handle='bottom-left'] {
+  cursor: nesw-resize;
+}
+
+.rotateHandle {
+  border-radius: var(--sb-radius-full);
+  cursor: grab;
+}
