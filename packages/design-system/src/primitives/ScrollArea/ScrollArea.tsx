@@ -5,7 +5,7 @@ import styles from './ScrollArea.module.css';
 
 export interface ScrollAreaProps {
   readonly children: ReactNode;
-  readonly className?: string;
+  readonly className?: string | undefined;
 }
 
 /** A scrolling region with a scrollbar that matches the rest of the interface. */

@@ -1,0 +1,23 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.presetRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-3);
+  padding: var(--sb-space-5);
+  border-bottom: 1px solid var(--sb-border-subtle);
+}
+
+.presetLabel {
+  color: var(--sb-text-muted);
+  font-size: var(--sb-font-size-sm);
+  letter-spacing: var(--sb-letter-spacing-wide);
+  text-transform: uppercase;
+}
+
+.footer {
+  padding: var(--sb-space-5);
+}

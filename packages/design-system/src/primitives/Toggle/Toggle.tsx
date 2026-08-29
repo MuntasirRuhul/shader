@@ -5,8 +5,8 @@ import styles from './Toggle.module.css';
 export interface ToggleProps {
   readonly label: string;
   readonly checked: boolean;
-  readonly disabled?: boolean;
-  readonly className?: string;
+  readonly disabled?: boolean | undefined;
+  readonly className?: string | undefined;
   readonly onCheckedChange: (checked: boolean) => void;
 }
 

@@ -77,16 +77,16 @@
 
 - [x] 8.1 Build the inspector's value primitives — slider, numeric input, text input, toggle, select, and color picker — on headless primitives; verify each renders from its declared inputs alone in isolation tests
 - [x] 8.2 Build the inspector's container primitives — popover, collapsible, and scroll area — on headless primitives; verify each renders from its declared inputs alone and that the accessibility suite from 2.6 passes for every primitive
-- [ ] 8.3 Implement schema-driven control generation for the selected object's shader; verify a shader registered by a test with no inspector changes renders complete controls
-- [ ] 8.4 Implement the control mapping for numeric, boolean, color, enum, and vector parameters honoring declared ranges, steps, and options; verify each type renders its control with its constraints applied
-- [ ] 8.5 Implement input validation clamping out-of-range values and reverting unparseable input without modifying the document; verify both
-- [ ] 8.6 Implement repeatable-group editing with add, remove, and reorder up to the declared maximum, and an explained unavailable state at the maximum; verify each and that remaining entries keep values
-- [ ] 8.7 Wire control edits to live canvas updates through the transient channel; verify the canvas updates continuously during a slider drag and values persist to the document
-- [ ] 8.8 Implement parameter grouping with collapsible groups and per-shader collapse persistence; verify declared order is preserved and collapse survives reselecting the shader
-- [ ] 8.9 Implement per-parameter and reset-all defaults, with reset-all as one undoable step and an at-default indication; verify each
-- [ ] 8.10 Implement preset selection applying values as a single undoable step; verify controls and canvas update and edited values are replaced
-- [ ] 8.11 Implement the empty, multiple-selection, and solid-fill panel states including the affordance to replace a solid fill with a shader; verify each state
-- [ ] 8.12 Implement the signed-out profile placeholder and donate affordance at the top of the inspector; verify they render without any authentication or network dependency
+- [x] 8.3 Implement schema-driven control generation for the selected object's shader; verify a shader registered by a test with no inspector changes renders complete controls
+- [x] 8.4 Implement the control mapping for numeric, boolean, color, enum, and vector parameters honoring declared ranges, steps, and options; verify each type renders its control with its constraints applied
+- [x] 8.5 Implement input validation clamping out-of-range values and reverting unparseable input without modifying the document; verify both
+- [x] 8.6 Implement repeatable-group editing with add, remove, and reorder up to the declared maximum, and an explained unavailable state at the maximum; verify each and that remaining entries keep values
+- [x] 8.7 Wire control edits to live canvas updates through the transient channel; verify the canvas updates continuously during a slider drag and values persist to the document
+- [x] 8.8 Implement parameter grouping with collapsible groups and per-shader collapse persistence; verify declared order is preserved and collapse survives reselecting the shader
+- [x] 8.9 Implement per-parameter and reset-all defaults, with reset-all as one undoable step and an at-default indication; verify each
+- [x] 8.10 Implement preset selection applying values as a single undoable step; verify controls and canvas update and edited values are replaced
+- [x] 8.11 Implement the empty, multiple-selection, and solid-fill panel states including the affordance to replace a solid fill with a shader; verify each state
+- [x] 8.12 Implement the signed-out profile placeholder and donate affordance at the top of the inspector; verify they render without any authentication or network dependency
 
 ## 9. Persistence, import, and export
 

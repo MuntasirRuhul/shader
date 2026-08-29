@@ -6,8 +6,8 @@ import styles from './ColorField.module.css';
 export interface ColorFieldProps {
   readonly label: string;
   readonly value: string;
-  readonly disabled?: boolean;
-  readonly className?: string;
+  readonly disabled?: boolean | undefined;
+  readonly className?: string | undefined;
   readonly onValueChange: (value: string) => void;
 }
 

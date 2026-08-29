@@ -8,8 +8,8 @@ export interface SliderProps {
   readonly min: number;
   readonly max: number;
   readonly step: number;
-  readonly disabled?: boolean;
-  readonly className?: string;
+  readonly disabled?: boolean | undefined;
+  readonly className?: string | undefined;
   /** Fires continuously while dragging. */
   readonly onChange: (value: number) => void;
   /** Fires once when the drag ends, for committing a single edit. */

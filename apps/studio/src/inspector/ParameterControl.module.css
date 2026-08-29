@@ -1,0 +1,16 @@
+.numberRow {
+  display: grid;
+  gap: var(--sb-space-4);
+  grid-template-columns: 1fr 72px;
+  align-items: center;
+}
+
+.numberEntry {
+  min-width: 0;
+}
+
+.vectorRow {
+  display: grid;
+  gap: var(--sb-space-4);
+  grid-template-columns: 1fr 1fr;
+}

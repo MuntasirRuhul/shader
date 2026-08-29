@@ -11,8 +11,8 @@ export interface SelectProps {
   readonly label: string;
   readonly value: string;
   readonly options: readonly SelectOption[];
-  readonly disabled?: boolean;
-  readonly className?: string;
+  readonly disabled?: boolean | undefined;
+  readonly className?: string | undefined;
   readonly onValueChange: (value: string) => void;
 }
 

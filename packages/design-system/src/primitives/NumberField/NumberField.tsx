@@ -5,12 +5,12 @@ import styles from '../TextField/TextField.module.css';
 export interface NumberFieldProps {
   readonly label: string;
   readonly value: number;
-  readonly min?: number;
-  readonly max?: number;
-  readonly step?: number;
-  readonly integer?: boolean;
-  readonly disabled?: boolean;
-  readonly className?: string;
+  readonly min?: number | undefined;
+  readonly max?: number | undefined;
+  readonly step?: number | undefined;
+  readonly integer?: boolean | undefined;
+  readonly disabled?: boolean | undefined;
+  readonly className?: string | undefined;
   readonly onValueChange: (value: number) => void;
   readonly ref?: Ref<HTMLInputElement>;
 }

@@ -7,7 +7,7 @@ export interface CollapsibleProps {
   readonly title: string;
   readonly open: boolean;
   readonly children: ReactNode;
-  readonly className?: string;
+  readonly className?: string | undefined;
   readonly onOpenChange: (open: boolean) => void;
 }
 

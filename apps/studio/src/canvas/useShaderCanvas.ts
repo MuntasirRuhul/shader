@@ -8,6 +8,7 @@ import {
   type ShaderRegistry,
 } from '@shader/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { transientChannel, type TransientEdit } from '../store/transientChannel';
 import { buildScene } from './buildScene';
 import { TextMaskCache } from './textRasterizer';
 
@@ -54,7 +55,10 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
   const failureRef = useRef(options.onCompileFailure);
   failureRef.current = options.onCompileFailure;
 
-  /** The scene for the current document, with text masks attached. */
+  /** Values published by an in-progress drag, applied over the document. */
+  const transientRef = useRef<readonly TransientEdit[]>([]);
+
+  /** The scene for the current document, with text masks and any live drag. */
   const sceneFor = useCallback((document: CanvasDocument) => {
     const masks = masksRef.current;
     const ratio = typeof window === 'undefined' ? 1 : window.devicePixelRatio;
@@ -66,7 +70,23 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
 
     // Drop masks for objects the scene no longer contains.
     masks.retainOnly(document.objects.map((object) => object.id));
-    return scene;
+
+    const pending = transientRef.current;
+    if (pending.length === 0) return scene;
+
+    // A drag in progress has not reached the document, so its values are laid
+    // over the scene here — which is what makes the canvas follow the control
+    // without a store write per pointer move.
+    return {
+      items: scene.items.map((item) => {
+        const overrides = pending.filter((edit) => edit.objectId === item.objectId);
+        if (overrides.length === 0) return item;
+
+        const values = { ...item.values };
+        for (const edit of overrides) values[edit.key] = edit.value as never;
+        return { ...item, values };
+      }),
+    };
   }, []);
 
   const teardown = useCallback(() => {
@@ -153,6 +173,21 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
     loop.reconcile();
     if (!loop.isRunning) loop.renderOnce();
   }, [options.document, options.zoom, sceneFor]);
+
+  // Redraw on every value a drag publishes. React is not involved.
+  useEffect(
+    () =>
+      transientChannel.subscribe((edits) => {
+        transientRef.current = edits;
+        const renderer = rendererRef.current;
+        const loop = loopRef.current;
+        if (!renderer || !loop) return;
+
+        renderer.setScene(sceneFor(documentRef.current));
+        if (!loop.isRunning) loop.renderOnce();
+      }),
+    [sceneFor],
+  );
 
   useEffect(() => teardown, [teardown]);
 

@@ -1,0 +1,51 @@
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-3);
+  padding-bottom: var(--sb-space-5);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sb-space-3);
+}
+
+.label {
+  color: var(--sb-text-secondary);
+  font-size: var(--sb-font-size-md);
+}
+
+.reset {
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--sb-text-muted);
+  font-family: var(--sb-font-sans);
+  font-size: var(--sb-font-size-sm);
+  cursor: pointer;
+}
+
+.reset:focus-visible {
+  outline: 2px solid var(--sb-focus-ring);
+  outline-offset: 2px;
+}
+
+/* At its default there is nothing to reset, so the control says so. */
+.reset:disabled {
+  color: var(--sb-text-disabled);
+  cursor: default;
+}
+
+.reset:hover:not(:disabled) {
+  color: var(--sb-accent-text);
+}
+
+.description {
+  margin: 0;
+  color: var(--sb-text-muted);
+  font-size: var(--sb-font-size-sm);
+  line-height: var(--sb-line-height-normal);
+}

@@ -8,6 +8,7 @@ import {
 import { IconButton, ThemeProvider, Tooltip, TooltipProvider } from '@shader/design-system';
 import './global.css';
 import { CanvasStage } from './canvas/CanvasStage';
+import { Inspector } from './inspector/Inspector';
 import { ShaderLibrary } from './panels/ShaderLibrary';
 import { libraryShaders, registry } from './shaders/registry';
 import { AppShell } from './shell/AppShell';
@@ -71,7 +72,7 @@ export function App() {
     <ThemeProvider>
       <TooltipProvider>
         <AppShell
-          inspectorPanel={<p>Inspector</p>}
+          inspectorPanel={<Inspector defaultShaderId="gradient-blur" registry={registry} />}
           layout={layout}
           libraryPanel={<ShaderLibrary onChoose={placeShader} shaders={libraryShaders()} />}
           onResizePanel={setWidth}
