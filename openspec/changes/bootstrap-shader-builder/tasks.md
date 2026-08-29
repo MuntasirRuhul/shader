@@ -27,12 +27,12 @@
 
 ## 4. Shader manifest, schema, and registry
 
-- [ ] 4.1 Define the parameter schema types for numeric, boolean, color, enum, vector, and repeatable-group parameters, including group and ordering metadata; verify types compile and reject an unknown parameter type
-- [ ] 4.2 Define the shader manifest type with identity, display metadata, schema version, GLSL sources, parameter schema, and presets; verify a manifest supplying interface code fails to typecheck
-- [ ] 4.3 Implement manifest validation covering missing fields, unsupported parameter types, defaults outside declared ranges or option sets, repeatable groups missing a maximum, and unsupported schema versions; verify each failure produces an error naming the shader and the specific fault
-- [ ] 4.4 Implement preset validation and default-filling for omitted parameters; verify a preset with an out-of-range value is rejected and an incomplete preset resolves omitted parameters to defaults
-- [ ] 4.5 Implement the registry with registration, duplicate-identifier rejection, listing, and lookup by identifier; verify listing returns registered shaders and an unknown identifier reports not-found rather than a partial manifest
-- [ ] 4.6 Verify the parameter schema and presets round-trip through serialization unchanged
+- [x] 4.1 Define the parameter schema types for numeric, boolean, color, enum, vector, and repeatable-group parameters, including group and ordering metadata; verify types compile and reject an unknown parameter type
+- [x] 4.2 Define the shader manifest type with identity, display metadata, schema version, GLSL sources, parameter schema, and presets; verify a manifest supplying interface code fails to typecheck
+- [x] 4.3 Implement manifest validation covering missing fields, unsupported parameter types, defaults outside declared ranges or option sets, repeatable groups missing a maximum, and unsupported schema versions; verify each failure produces an error naming the shader and the specific fault
+- [x] 4.4 Implement preset validation and default-filling for omitted parameters; verify a preset with an out-of-range value is rejected and an incomplete preset resolves omitted parameters to defaults
+- [x] 4.5 Implement the registry with registration, duplicate-identifier rejection, listing, and lookup by identifier; verify listing returns registered shaders and an unknown identifier reports not-found rather than a partial manifest
+- [x] 4.6 Verify the parameter schema and presets round-trip through serialization unchanged
 
 ## 5. WebGL2 shader runtime
 
