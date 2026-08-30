@@ -1,4 +1,12 @@
-## MODIFIED Requirements
+## REMOVED Requirements
+
+### Requirement: The library offers presets, not shaders
+
+**Reason**: Four shaders produced sixteen entries, several sharing a preset name, with nothing on the entry to say which shader it belonged to. The shader is what a user is choosing.
+
+**Migration**: Replaced by "The library offers shaders, not presets". A preset other than the first is chosen in the parameter panel, which already offers them.
+
+## ADDED Requirements
 
 ### Requirement: The library offers shaders, not presets
 
@@ -28,6 +36,8 @@ The library SHALL present each shader as its own entry, labelled with the shader
 
 - **WHEN** a user wants a preset other than the first
 - **THEN** they choose the shader from the library and the preset from the parameter panel
+
+## MODIFIED Requirements
 
 ### Requirement: A library entry previews its colours
 
