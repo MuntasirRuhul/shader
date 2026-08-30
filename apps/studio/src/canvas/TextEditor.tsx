@@ -83,6 +83,10 @@ export function TextEditor({ document, editingId, viewport, onCommit, onCancel }
         }
       }}
       ref={textRef}
+      // One row, so measuring against `auto` collapses to the content. A
+      // textarea defaults to two, which put a floor of two lines under every
+      // measurement and left the box twice the height of its own text.
+      rows={1}
       style={{
         left: `${String(screen.x)}px`,
         top: `${String(screen.y)}px`,

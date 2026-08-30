@@ -27,8 +27,10 @@ const ALIGNMENTS = [
   { value: 'right', label: 'Align right', path: 'M2 4h12M7 8h7M4 12h10' },
 ] as const;
 
+// Lettering is filled, not stroked, and the icons around it set `fill="none"`
+// for their outlines — so without a fill of its own this drew nothing at all.
 const SIZE_GLYPH = (
-  <text fontSize="10" stroke="none" x="1.5" y="12.5">
+  <text fill="currentColor" fontSize="10" stroke="none" x="1.5" y="12.5">
     Aa
   </text>
 );

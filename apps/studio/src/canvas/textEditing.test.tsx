@@ -68,6 +68,15 @@ describe('the editor covers the object exactly', () => {
     expect(rule).toMatch(/box-sizing:\s*border-box/);
   });
 
+  it('asks for one row, so measuring can collapse to the content', () => {
+    // A textarea defaults to two rows. Measured against `height: auto` that
+    // puts a floor of two lines under everything, and a single line of text
+    // opened in a box twice its own height.
+    const editor = renderEditor();
+
+    expect(editor.getAttribute('rows')).toBe('1');
+  });
+
   it('takes its height from the browser measure, not from a guess', () => {
     // A height worked out here clips a line whenever it disagrees with where
     // the browser actually broke them, and a textarea hides what does not fit.
