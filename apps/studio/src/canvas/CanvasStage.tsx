@@ -1,8 +1,10 @@
 import type { ShaderCompileFailure, ShaderRegistry } from '@shader/core';
-import { useCallback, useRef } from 'react';
+import { useTheme } from '@shader/design-system';
+import { useCallback, useEffect, useRef } from 'react';
 import { useEditorStore } from '../store/editorStore';
 import styles from './CanvasStage.module.css';
 import { groundStyle } from './ground';
+import { inkFor } from './inkColor';
 import { SelectionOverlay } from './SelectionOverlay';
 import { TextEditor } from './TextEditor';
 import { fitTextBox } from './textRasterizer';
@@ -38,7 +40,24 @@ export function CanvasStage({ registry, onCompileFailure, onToggleChrome }: Canv
     return { width: rect?.width ?? 0, height: rect?.height ?? 0 };
   }, []);
 
-  const pointer = useCanvasPointer(useEditorStore.getState);
+  const { theme } = useTheme();
+  const pointer = useCanvasPointer(useEditorStore.getState, { ink: inkFor(theme) });
+
+  // Bound here, non-passively, because React's own wheel listener is passive
+  // and cannot stop the browser magnifying the page.
+  const onWheel = pointer.onWheel;
+  useEffect(() => {
+    const element = stageRef.current;
+    if (!element) return;
+
+    const listener = (event: globalThis.WheelEvent) => {
+      onWheel(event, element);
+    };
+    element.addEventListener('wheel', listener, { passive: false });
+    return () => {
+      element.removeEventListener('wheel', listener);
+    };
+  }, [onWheel]);
   useCanvasShortcuts(useEditorStore.getState, {
     viewSize,
     ...(onToggleChrome ? { onToggleChrome } : {}),
@@ -51,7 +70,6 @@ export function CanvasStage({ registry, onCompileFailure, onToggleChrome }: Canv
       onPointerDown={pointer.onPointerDown}
       onPointerMove={pointer.onPointerMove}
       onPointerUp={pointer.onPointerUp}
-      onWheel={pointer.onWheel}
       ref={stageRef}
       style={{ cursor: pointer.cursor }}
     >

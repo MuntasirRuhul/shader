@@ -2,6 +2,7 @@ import {
   createEllipse,
   createRectangle,
   createText,
+  solidFill,
   objectAt,
   updateObject,
   type CanvasDocument,
@@ -14,10 +15,10 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
-  type WheelEvent,
 } from 'react';
 import type { EditorState } from '../store/editorStore';
 import { transientChannel } from '../store/transientChannel';
+import { INK } from './inkColor';
 import {
   cursorFor,
   gestureChanges,
@@ -44,7 +45,12 @@ export interface CanvasPointerHandlers {
   readonly onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
   readonly onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
   readonly onDoubleClick: (event: ReactMouseEvent<HTMLElement>) => void;
-  readonly onWheel: (event: WheelEvent<HTMLElement>) => void;
+  /**
+   * Bound natively rather than through React, which registers wheel listeners
+   * as passive — so a handler attached the usual way cannot stop the browser
+   * zooming the whole page instead of the canvas.
+   */
+  readonly onWheel: (event: globalThis.WheelEvent, element: HTMLElement) => void;
 }
 
 /**
@@ -68,7 +74,22 @@ function publish(gesture: Gesture, document: CanvasDocument, constrain: boolean)
   }
 }
 
-export function useCanvasPointer(store: () => EditorState): CanvasPointerHandlers {
+export interface CanvasPointerOptions {
+  /**
+   * What new text is drawn in. Supplied rather than read from the theme here,
+   * so this stays a hook about pointers: a gesture handler that cannot run
+   * without a theme provider is a gesture handler nobody can test.
+   */
+  readonly ink?: string;
+}
+
+export function useCanvasPointer(
+  store: () => EditorState,
+  options: CanvasPointerOptions = {},
+): CanvasPointerHandlers {
+  const inkRef = useRef(options.ink ?? INK.dark);
+  inkRef.current = options.ink ?? INK.dark;
+
   const [gesture, setGesture] = useState<Gesture>(IDLE);
   const [constrain, setConstrain] = useState(false);
   const [overObject, setOverObject] = useState(false);
@@ -297,7 +318,14 @@ export function useCanvasPointer(store: () => EditorState): CanvasPointerHandler
 
       // The text tool creates on release, wherever the pointer landed.
       if (state.tool.active === 'text' && current.kind === 'idle') {
-        const object = createText({ x: point.x, y: point.y, text: '' });
+        const object = createText({
+          x: point.x,
+          y: point.y,
+          text: '',
+          // Drawn in whatever the canvas contrasts with, so it can be read the
+          // moment it exists rather than after being recoloured.
+          fill: solidFill(inkRef.current),
+        });
         state.addObject(object);
         state.beginTextEditing(object.id);
         state.setTool('select');
@@ -323,10 +351,15 @@ export function useCanvasPointer(store: () => EditorState): CanvasPointerHandler
   );
 
   const handleWheel = useCallback(
-    (event: WheelEvent<HTMLElement>) => {
+    (event: globalThis.WheelEvent, element: HTMLElement) => {
       const state = store();
-      const rect = event.currentTarget.getBoundingClientRect();
+      const rect = element.getBoundingClientRect();
       const screenPoint = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+
+      // The gesture belongs to the canvas. Left to the browser it magnifies
+      // the whole application — panels, toolbar and all — which is not what
+      // zooming a drawing means.
+      event.preventDefault();
 
       // A pinch gesture arrives as a wheel event with the control key set.
       if (event.ctrlKey || event.metaKey) {

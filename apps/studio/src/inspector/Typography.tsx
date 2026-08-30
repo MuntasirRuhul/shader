@@ -1,6 +1,7 @@
 import type { TextObject, TextSettings } from '@shader/core';
 import { NumberField, Select } from '@shader/design-system';
 import { useEffect, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { fitTextBox } from '../canvas/textRasterizer';
 import { useEditorStore } from '../store/editorStore';
 import { FONTS, isFontLoading, loadFont, weightsFor } from './fonts';
 import styles from './Typography.module.css';
@@ -8,10 +9,12 @@ import styles from './Typography.module.css';
 /**
  * The type controls for a text object.
  *
- * Every field can be typed into, stepped with the arrow keys, or scrubbed by
- * dragging its leading glyph. Sliders would have matched the rest of the panel
- * but cost precision and a great deal of vertical room, and type is the one
- * place a value of 47 rather than 48 is worth being able to ask for.
+ * Arranged as the reference builder arranges them: the family across the top,
+ * weight beside size, line height beside letter spacing, then alignment. Every
+ * numeric field can be typed into, stepped with the arrow keys, or scrubbed by
+ * dragging the glyph beside it — sliders would have matched the rest of the
+ * panel but cost precision and a great deal of vertical room, and type is the
+ * one place a value of 47 rather than 48 is worth being able to ask for.
  */
 
 export interface TypographyProps {
@@ -19,10 +22,18 @@ export interface TypographyProps {
 }
 
 const ALIGNMENTS = [
-  { value: 'left', label: 'Left' },
-  { value: 'center', label: 'Centre' },
-  { value: 'right', label: 'Right' },
+  { value: 'left', label: 'Align left', path: 'M2 4h12M2 8h7M2 12h10' },
+  { value: 'center', label: 'Align centre', path: 'M2 4h12M4.5 8h7M3 12h10' },
+  { value: 'right', label: 'Align right', path: 'M2 4h12M7 8h7M4 12h10' },
 ] as const;
+
+const SIZE_GLYPH = (
+  <text fontSize="10" stroke="none" x="1.5" y="12.5">
+    Aa
+  </text>
+);
+const LINE_HEIGHT_GLYPH = <path d="M2 2.6h12M2 13.4h12M5.4 11L8 5l2.6 6M6.2 9.4h3.6" />;
+const LETTER_SPACING_GLYPH = <path d="M2.4 2.6v10.8M13.6 2.6v10.8M5.4 11L8 5l2.6 6M6.2 9.4h3.6" />;
 
 export function Typography({ object }: TypographyProps) {
   const type = object.textSettings;
@@ -34,9 +45,14 @@ export function Typography({ object }: TypographyProps) {
   }, [type.fontFamily]);
 
   const change = (changes: Partial<TextSettings>, label: string) => {
+    const next = { ...type, ...changes };
+    // The box has to follow the type. Larger, heavier, or more widely spaced
+    // text needs more room, and a box left at its old size simply crops it.
+    const box = fitTextBox(object.text, next, object.width);
+
     useEditorStore
       .getState()
-      .updateObject(object.id, { textSettings: { ...type, ...changes } }, label);
+      .updateObject(object.id, { textSettings: next, height: box.height }, label);
   };
 
   const weights = weightsFor(type.fontFamily);
@@ -67,87 +83,118 @@ export function Typography({ object }: TypographyProps) {
         </p>
       )}
 
-      <Select
-        label="Weight"
-        onValueChange={(weight) => {
-          change({ fontWeight: Number(weight) }, 'Change weight');
-        }}
-        options={weights.map((weight) => ({ value: String(weight), label: weightName(weight) }))}
-        value={String(type.fontWeight)}
-      />
-
-      <Scrub
-        glyph="Aa"
-        onScrub={(delta) => {
-          change({ fontSize: clamp(type.fontSize + delta, 1, 800) }, 'Change size');
-        }}
-        title="Drag to change the size"
-      >
-        <NumberField
-          label="Size"
-          max={800}
-          min={1}
-          onValueChange={(fontSize) => {
-            change({ fontSize }, 'Change size');
+      <div className={styles.pair}>
+        <Select
+          label="Weight"
+          onValueChange={(weight) => {
+            change({ fontWeight: Number(weight) }, 'Change weight');
           }}
-          step={1}
-          value={type.fontSize}
+          options={weights.map((weight) => ({ value: String(weight), label: weightName(weight) }))}
+          value={String(type.fontWeight)}
         />
-      </Scrub>
 
-      <Scrub
-        glyph="↕"
-        onScrub={(delta) => {
-          change(
-            { lineHeight: clamp(round(type.lineHeight + delta * 0.02), 0.5, 4) },
-            'Change line height',
-          );
-        }}
-        title="Drag to change the line height"
-      >
-        <NumberField
-          label="Line height"
-          max={4}
-          min={0.5}
-          onValueChange={(lineHeight) => {
-            change({ lineHeight }, 'Change line height');
+        <Scrub
+          glyph={SIZE_GLYPH}
+          onScrub={(steps) => {
+            change({ fontSize: clamp(type.fontSize + steps, 1, 800) }, 'Change size');
           }}
-          step={0.05}
-          value={type.lineHeight}
-        />
-      </Scrub>
+          title="Drag to change the size"
+        >
+          <NumberField
+            label="Size"
+            max={800}
+            min={1}
+            onValueChange={(fontSize) => {
+              change({ fontSize }, 'Change size');
+            }}
+            step={1}
+            value={type.fontSize}
+          />
+        </Scrub>
+      </div>
 
-      <Scrub
-        glyph="A|A"
-        onScrub={(delta) => {
-          change(
-            { letterSpacing: clamp(round(type.letterSpacing + delta * 0.1), -20, 60) },
-            'Change letter spacing',
-          );
-        }}
-        title="Drag to change the letter spacing"
-      >
-        <NumberField
-          label="Letter spacing"
-          max={60}
-          min={-20}
-          onValueChange={(letterSpacing) => {
-            change({ letterSpacing }, 'Change letter spacing');
-          }}
-          step={0.1}
-          value={type.letterSpacing}
-        />
-      </Scrub>
+      <div className={styles.pair}>
+        <Labelled text="Line height">
+          <Scrub
+            glyph={LINE_HEIGHT_GLYPH}
+            onScrub={(steps) => {
+              change(
+                { lineHeight: clamp(round(type.lineHeight + steps * 0.02), 0.5, 4) },
+                'Change line height',
+              );
+            }}
+            title="Drag to change the line height"
+          >
+            <NumberField
+              label="Line height"
+              max={4}
+              min={0.5}
+              onValueChange={(lineHeight) => {
+                change({ lineHeight }, 'Change line height');
+              }}
+              step={0.05}
+              value={type.lineHeight}
+            />
+          </Scrub>
+        </Labelled>
 
-      <Select
-        label="Alignment"
-        onValueChange={(align) => {
-          change({ align: align as TextSettings['align'] }, 'Change alignment');
-        }}
-        options={ALIGNMENTS.map((option) => ({ value: option.value, label: option.label }))}
-        value={type.align}
-      />
+        <Labelled text="Letter spacing">
+          <Scrub
+            glyph={LETTER_SPACING_GLYPH}
+            onScrub={(steps) => {
+              change(
+                { letterSpacing: clamp(round(type.letterSpacing + steps * 0.1), -20, 60) },
+                'Change letter spacing',
+              );
+            }}
+            title="Drag to change the letter spacing"
+          >
+            <NumberField
+              label="Letter spacing"
+              max={60}
+              min={-20}
+              onValueChange={(letterSpacing) => {
+                change({ letterSpacing }, 'Change letter spacing');
+              }}
+              step={0.1}
+              value={type.letterSpacing}
+            />
+          </Scrub>
+        </Labelled>
+      </div>
+
+      <Labelled text="Alignment">
+        <div className={styles.segmented} role="group">
+          {ALIGNMENTS.map((option) => (
+            <button
+              aria-label={option.label}
+              aria-pressed={type.align === option.value}
+              className={styles.segment}
+              key={option.value}
+              onClick={() => {
+                change({ align: option.value }, 'Change alignment');
+              }}
+              title={option.label}
+              type="button"
+            >
+              <svg fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 16 16">
+                <path d={option.path} />
+              </svg>
+            </button>
+          ))}
+        </div>
+      </Labelled>
     </section>
+  );
+}
+
+/** A field under a small heading, as the reference panel has. */
+function Labelled({ text, children }: { readonly text: string; readonly children: ReactNode }) {
+  return (
+    <div className={styles.labelled}>
+      <span className={styles.fieldLabel}>{text}</span>
+      {children}
+    </div>
   );
 }
 
@@ -188,7 +235,7 @@ function Scrub({
   onScrub,
   children,
 }: {
-  readonly glyph: string;
+  readonly glyph: ReactNode;
   readonly title: string;
   readonly onScrub: (steps: number) => void;
   readonly children: ReactNode;
@@ -220,7 +267,9 @@ function Scrub({
   return (
     <div className={styles.scrubRow}>
       <span aria-hidden="true" className={styles.scrubHandle} onPointerDown={begin} title={title}>
-        {glyph}
+        <svg fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 16 16">
+          {glyph}
+        </svg>
       </span>
       <div className={styles.scrubField}>{children}</div>
     </div>
