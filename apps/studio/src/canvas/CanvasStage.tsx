@@ -57,6 +57,7 @@ export function CanvasStage({ registry, onCompileFailure }: CanvasStageProps) {
       <SelectionOverlay
         constrain={pointer.constrain}
         document={document}
+        editingId={editingTextId}
         gesture={pointer.gesture}
         selection={selection}
         viewport={viewport}

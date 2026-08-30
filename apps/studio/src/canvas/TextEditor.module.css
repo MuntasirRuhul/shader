@@ -3,6 +3,9 @@
  * rendered glyphs stay visible beneath, and the caret appears to sit in them.
  */
 .editor {
+  /* The border is drawn inside the width it is given, so the editor covers the
+     object exactly rather than sitting two pixels wider than it. */
+  box-sizing: border-box;
   position: absolute;
   z-index: 3;
   margin: 0;

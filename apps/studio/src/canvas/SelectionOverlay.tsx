@@ -12,6 +12,8 @@ export interface SelectionOverlayProps {
   readonly viewport: ViewportState;
   readonly gesture: Gesture;
   readonly constrain: boolean;
+  /** The object being typed into, which draws its own bounds. */
+  readonly editingId?: string | null;
 }
 
 /**
@@ -26,9 +28,11 @@ export function SelectionOverlay({
   viewport,
   gesture,
   constrain,
+  editingId = null,
 }: SelectionOverlayProps) {
   // Follows a drag in progress, so the indicator moves with what it describes.
-  const bounds = previewBounds(document, selection, gesture, constrain);
+  const editing = editingId !== null && selection.length === 1 && selection[0] === editingId;
+  const bounds = editing ? undefined : previewBounds(document, selection, gesture, constrain);
   const preview = gestureRect(gesture, constrain);
   const showHandles = selection.length === 1 && gesture.kind !== 'marquee';
 

@@ -1,8 +1,7 @@
 import { isTextObject, type CanvasDocument } from '@shader/core';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ViewportState } from '../store/slices';
 import styles from './TextEditor.module.css';
-import { fitTextBox } from './textRasterizer';
 import { canvasRectToScreen } from './viewport';
 
 export interface TextEditorProps {
@@ -33,16 +32,33 @@ export function TextEditor({ document, editingId, viewport, onCommit, onCancel }
     element.select();
   }, [editingId]);
 
+  // Grow to hold what has been typed. The browser is the only thing that knows
+  // where it actually broke the lines, so it is asked rather than predicted —
+  // a height worked out here disagrees by a line sooner or later, and a
+  // textarea hides whatever does not fit.
+  useLayoutEffect(() => {
+    const element = textRef.current;
+    if (!element || !object || !isTextObject(object)) return;
+
+    const { fontSize, lineHeight } = object.textSettings;
+    const oneLine = fontSize * lineHeight * viewport.zoom;
+
+    element.style.height = 'auto';
+    // Never smaller than a line: a measure taken before the browser has laid
+    // the text out reads zero, and a collapsed editor has nowhere to put the
+    // caret.
+    element.style.height = `${String(Math.max(element.scrollHeight, oneLine))}px`;
+  }, [value, viewport.zoom, editingId, object]);
+
   if (!object || !isTextObject(object)) return null;
 
   const type = object.textSettings;
-  // The box follows what is being typed, so the editor is the shape the object
-  // will take rather than a fixed rectangle it has to be squeezed into. A box
-  // sized by hand keeps its width; only the height follows the words.
-  const box = fitTextBox(value, type, object.text === '' ? undefined : object.width);
 
+  // The editor is exactly as wide as the object, always. Sizing it to the
+  // words instead left a gap between where it ended and where the object's
+  // box did — two edges, one object.
   const screen = canvasRectToScreen(
-    { x: object.x, y: object.y, width: box.width, height: box.height },
+    { x: object.x, y: object.y, width: object.width, height: object.height },
     viewport,
   );
 
@@ -72,7 +88,6 @@ export function TextEditor({ document, editingId, viewport, onCommit, onCancel }
         left: `${String(screen.x)}px`,
         top: `${String(screen.y)}px`,
         width: `${String(screen.width)}px`,
-        height: `${String(screen.height)}px`,
         fontFamily: type.fontFamily,
         fontSize: `${String(type.fontSize * viewport.zoom)}px`,
         fontWeight: type.fontWeight,
