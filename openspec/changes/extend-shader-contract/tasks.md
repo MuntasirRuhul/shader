@@ -44,7 +44,7 @@
 
 ## 7. Verify the whole
 
-- [ ] 7.1 Verify every existing shader is unchanged in behaviour, since none declares state or passes
-- [ ] 7.2 Verify a shader declaring both state and passes works, so the two features compose rather than merely coexisting
-- [ ] 7.3 Verify a document reopened after a reload starts from the declared initial state, and that this is what the specification requires rather than a defect
-- [ ] 7.4 Verify the full root script set passes on a clean checkout, and update the README's shader contract section to describe state, passes, and pointer input
+- [x] 7.1 Verify every existing shader is unchanged in behaviour, since none declares state or passes
+- [x] 7.2 Verify a shader declaring both state and passes works, so the two features compose rather than merely coexisting
+- [x] 7.3 Verify a document reopened after a reload starts from the declared initial state, and that this is what the specification requires rather than a defect
+- [x] 7.4 Verify the full root script set passes on a clean checkout, and update the README's shader contract section to describe state, passes, and pointer input
