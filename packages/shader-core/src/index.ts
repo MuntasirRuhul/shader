@@ -184,3 +184,9 @@ export {
   type RestoreResult,
   type SaveResult,
 } from './persistence/localStore';
+
+export {
+  declareUniforms,
+  groupCountUniform,
+  groupEntryUniform,
+} from './runtime/webgl/uniformBinding';

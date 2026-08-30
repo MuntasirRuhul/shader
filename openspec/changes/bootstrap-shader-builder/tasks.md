@@ -107,8 +107,8 @@
 
 ## 11. Integration verification
 
-- [ ] 11.1 Verify a second, minimal fixture shader registered only in tests renders and generates controls with no changes outside its manifest, proving the open-closed contract
-- [ ] 11.2 Verify the accessibility pass across shell, toolbar, and inspector — keyboard-only operation of every control, focus restoration, and region announcement — in both themes
-- [ ] 11.3 Verify theme switching leaves no element unreadable or without a focus indicator across every surface
-- [ ] 11.4 Verify continuous interaction performance: dragging a slider and dragging an object each sustain smooth updates without per-frame React re-renders
-- [ ] 11.5 Verify the full root script set passes on a clean checkout and document the development workflow in the repository README
+- [x] 11.1 Verify a second, minimal fixture shader registered only in tests renders and generates controls with no changes outside its manifest, proving the open-closed contract
+- [x] 11.2 Verify the accessibility pass across shell, toolbar, and inspector — keyboard-only operation of every control, focus restoration, and region announcement — in both themes
+- [x] 11.3 Verify theme switching leaves no element unreadable or without a focus indicator across every surface
+- [x] 11.4 Verify continuous interaction performance: dragging a slider and dragging an object each sustain smooth updates without per-frame React re-renders
+- [x] 11.5 Verify the full root script set passes on a clean checkout and document the development workflow in the repository README
