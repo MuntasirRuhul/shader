@@ -1,4 +1,5 @@
 import type { ParameterValues } from '../registry/parameterSchema';
+import { DEFAULT_BLEND_MODE, type BlendMode } from './blendMode';
 
 /**
  * What the user is building.
@@ -78,6 +79,8 @@ interface BaseObject {
   /** A locked object is skipped by pointer targeting. */
   readonly locked: boolean;
   readonly fill: Fill;
+  /** How this object's colour combines with what is beneath it. */
+  readonly blendMode: BlendMode;
 }
 
 export interface RectangleObject extends BaseObject {
@@ -183,6 +186,7 @@ function baseDefaults(overrides: Partial<BaseObject>): ObjectDefaults {
     visible: true,
     locked: false,
     fill: DEFAULT_FILL,
+    blendMode: DEFAULT_BLEND_MODE,
     ...overrides,
   };
 }

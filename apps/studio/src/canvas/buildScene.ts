@@ -69,6 +69,7 @@ export function buildScene(document: CanvasDocument, options: SceneOptions = {})
         rotation: object.rotation,
       },
       opacity: object.opacity,
+      blendMode: object.blendMode,
       ...(mask === undefined ? {} : { mask }),
       ...(image === undefined ? {} : { image }),
     });

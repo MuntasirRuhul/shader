@@ -1,4 +1,5 @@
 import type { ParameterValues } from '../registry/parameterSchema';
+import type { BlendMode } from './blendMode';
 import {
   isShaderFill,
   nextObjectId,
@@ -27,6 +28,7 @@ export interface ObjectChanges {
   readonly visible?: boolean;
   readonly locked?: boolean;
   readonly fill?: Fill;
+  readonly blendMode?: BlendMode;
   /** Rectangles only. */
   readonly cornerRadius?: number;
   /** Text objects only. */

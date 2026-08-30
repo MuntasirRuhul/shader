@@ -1,3 +1,4 @@
+import type { BlendMode } from '../document/blendMode';
 import type { ParameterValues } from '../registry/parameterSchema';
 import type { PointerInput } from '../registry/simulation';
 import type { AdvanceFailure } from './SimulationStore';
@@ -26,6 +27,8 @@ export interface RenderItem {
   readonly values: ParameterValues;
   readonly transform: RenderTransform;
   readonly opacity: number;
+  /** How this object combines with what is beneath it. Defaults to normal. */
+  readonly blendMode?: BlendMode;
   /** Optional alpha mask, used by text objects to shape the shader's output. */
   readonly mask?: TexSource;
   /** The picture to draw, for an object created from a file. */

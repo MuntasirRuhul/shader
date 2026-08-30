@@ -50,6 +50,11 @@ export interface GlContext {
   readonly RGBA8: number;
   readonly FRAMEBUFFER: number;
   readonly COLOR_ATTACHMENT0: number;
+  readonly FUNC_ADD: number;
+  readonly MIN: number;
+  readonly MAX: number;
+  readonly DST_COLOR: number;
+  readonly ONE_MINUS_DST_COLOR: number;
 
   createShader: (type: number) => GlShader | null;
   shaderSource: (shader: GlShader, source: string) => void;
@@ -125,6 +130,7 @@ export interface GlContext {
   enable: (cap: number) => void;
   disable: (cap: number) => void;
   blendFuncSeparate: (srcRgb: number, dstRgb: number, srcAlpha: number, dstAlpha: number) => void;
+  blendEquation: (mode: number) => void;
   drawArrays: (mode: number, first: number, count: number) => void;
 
   isContextLost: () => boolean;

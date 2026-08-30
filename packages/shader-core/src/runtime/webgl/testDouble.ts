@@ -65,6 +65,11 @@ export class FakeGl implements GlContext {
   readonly RGBA8 = 0x8058;
   readonly FRAMEBUFFER = 0x8d40;
   readonly COLOR_ATTACHMENT0 = 0x8ce0;
+  readonly FUNC_ADD = 0x8006;
+  readonly MIN = 0x8007;
+  readonly MAX = 0x8008;
+  readonly DST_COLOR = 0x0306;
+  readonly ONE_MINUS_DST_COLOR = 0x0307;
 
   /** Every source passed to a shader stage, in order. */
   readonly compiledSources: string[] = [];
@@ -304,7 +309,19 @@ export class FakeGl implements GlContext {
   }
   enable(): void {}
   disable(): void {}
-  blendFuncSeparate(): void {}
+  /**
+   * How the hardware is currently set to combine with the backdrop. Held as
+   * state rather than as a log of calls, so the order they arrive in is the
+   * implementation's business rather than the test's.
+   */
+  blendState: { func: number[]; equation: number } = { func: [], equation: 0x8006 };
+
+  blendFuncSeparate(...factors: number[]): void {
+    this.blendState = { ...this.blendState, func: factors };
+  }
+  blendEquation(mode: number): void {
+    this.blendState = { ...this.blendState, equation: mode };
+  }
 
   drawArrays(_mode: number, first: number, count: number): void {
     this.drawCalls.push({ first, count });

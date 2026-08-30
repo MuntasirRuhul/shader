@@ -13,6 +13,7 @@ import { Button, ColorField } from '@shader/design-system';
 import { DocumentActions } from '../persistence/DocumentActions';
 import { useEditorStore } from '../store/editorStore';
 import { transientChannel } from '../store/transientChannel';
+import { Appearance } from './Appearance';
 import styles from './Inspector.module.css';
 import { ShaderParameters } from './ShaderParameters';
 import { Typography } from './Typography';
@@ -60,6 +61,8 @@ export function Inspector({ registry, defaultShaderId }: InspectorProps) {
             <p className={styles.stateBody}>Select a single object to edit its parameters.</p>
           </div>
         )}
+
+        {object && <Appearance object={object} />}
 
         {object?.type === 'image' && (
           <div className={styles.state}>

@@ -14,6 +14,7 @@ import {
 } from '../renderingPort';
 import { SimulationStore } from '../SimulationStore';
 import { computeSurfaceSize, matchesSurfaceSize, type SurfaceSizeOptions } from '../surfaceSize';
+import { applyBlendMode } from './blending';
 import type { GlContext, GlTexture, GlVertexArray } from './glTypes';
 import { ProgramCache, type CompiledProgram, type CompileResult } from './ProgramCache';
 import { RenderTargetStore } from './RenderTargetStore';
@@ -402,6 +403,9 @@ export class WebGlRenderer implements RenderingPort {
     this.bindImage(item, location(RESERVED_UNIFORMS.hasImage), location(RESERVED_UNIFORMS.image));
 
     if (options.final) {
+      // Only what reaches the canvas meets a backdrop; a pass drawing into its
+      // own target has nothing beneath it to combine with.
+      applyBlendMode(gl, item.blendMode ?? 'normal');
       gl.uniform1f(location(RESERVED_UNIFORMS.opacity), item.opacity);
       this.bindMask(item, location(RESERVED_UNIFORMS.hasMask), location(RESERVED_UNIFORMS.mask));
     } else {

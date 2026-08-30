@@ -88,6 +88,14 @@ export { applyModelMatrix, buildModelMatrix } from './runtime/webgl/transform';
 export { WebGlRenderer, type WebGlRendererOptions } from './runtime/webgl/WebGlRenderer';
 
 export {
+  BLEND_MODE_LABELS,
+  BLEND_MODES,
+  DEFAULT_BLEND_MODE,
+  isBlendMode,
+  type BlendMode,
+} from './document/blendMode';
+
+export {
   createDocument,
   createEllipse,
   createImage,
