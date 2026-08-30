@@ -1,4 +1,4 @@
-import { isTextObject, type CanvasDocument } from '@shader/core';
+import { absolutePlacement, isTextObject, type CanvasDocument } from '@shader/core';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ViewportState } from '../store/slices';
 import styles from './TextEditor.module.css';
@@ -57,10 +57,9 @@ export function TextEditor({ document, editingId, viewport, onCommit, onCancel }
   // The editor is exactly as wide as the object, always. Sizing it to the
   // words instead left a gap between where it ended and where the object's
   // box did — two edges, one object.
-  const screen = canvasRectToScreen(
-    { x: object.x, y: object.y, width: object.width, height: object.height },
-    viewport,
-  );
+  // Where the object actually is. Its own coordinates are stated against
+  // whatever contains it, so on their own they put the editor at the origin.
+  const screen = canvasRectToScreen(absolutePlacement(document, object), viewport);
 
   return (
     <textarea

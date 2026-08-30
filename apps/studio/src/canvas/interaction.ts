@@ -1,5 +1,6 @@
 import {
   absolutePlacement,
+  ancestorsOf,
   boundsOf,
   outermostOf,
   objectAt,
@@ -209,15 +210,32 @@ export function moveOffset(gesture: Gesture): Point {
 }
 
 /** Where each moved object should now sit. */
-export function movedPositions(gesture: Gesture): Map<string, Point> {
+export function movedPositions(gesture: Gesture, document?: CanvasDocument): Map<string, Point> {
   const positions = new Map<string, Point>();
   if (gesture.kind !== 'move') return positions;
 
   const offset = moveOffset(gesture);
   for (const [objectId, start] of gesture.startPositions) {
-    positions.set(objectId, { x: start.x + offset.x, y: start.y + offset.y });
+    // A pointer moves in canvas space; a child is stated in its container's.
+    // Without turning the offset back, dragging something inside a rotated
+    // group sends it off at the container's angle.
+    const local = document ? intoContainerSpace(offset, document, objectId) : offset;
+    positions.set(objectId, { x: start.x + local.x, y: start.y + local.y });
   }
   return positions;
+}
+
+/** A canvas-space offset expressed in the frame of an object's container. */
+function intoContainerSpace(offset: Point, document: CanvasDocument, objectId: string): Point {
+  const turn = ancestorsOf(document, objectId).reduce(
+    (total, parent) => total + parent.rotation,
+    0,
+  );
+  if (turn === 0) return offset;
+
+  const cos = Math.cos(-turn);
+  const sin = Math.sin(-turn);
+  return { x: offset.x * cos - offset.y * sin, y: offset.x * sin + offset.y * cos };
 }
 
 /** The rectangle a resize gesture currently describes. */
@@ -273,7 +291,7 @@ export function gestureChanges(
 ): { objectId: string; changes: Record<string, number> }[] {
   switch (gesture.kind) {
     case 'move':
-      return [...movedPositions(gesture)].map(([objectId, position]) => ({
+      return [...movedPositions(gesture, document)].map(([objectId, position]) => ({
         objectId,
         changes: { x: position.x, y: position.y },
       }));

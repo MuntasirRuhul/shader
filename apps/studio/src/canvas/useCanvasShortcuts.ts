@@ -1,4 +1,4 @@
-import { unionBounds, updateObject, type CanvasDocument } from '@shader/core';
+import { ancestorsOf, unionBounds, updateObject, type CanvasDocument } from '@shader/core';
 import { useEffect } from 'react';
 import type { EditorState } from '../store/editorStore';
 import { commandFor, isTextEntryFocused } from './keyboard';
@@ -64,9 +64,17 @@ export function useCanvasShortcuts(store: () => EditorState, options: ShortcutOp
           state.redo();
           break;
 
-        case 'clear-selection':
-          state.clearSelection();
+        case 'clear-selection': {
+          // Inside a container, this steps out to it rather than dropping the
+          // selection entirely — the way back out of a group.
+          const containers = state.selection
+            .map((objectId) => ancestorsOf(state.document, objectId)[0]?.id)
+            .filter((parentId): parentId is string => parentId !== undefined);
+
+          if (containers.length > 0) state.selectMany([...new Set(containers)]);
+          else state.clearSelection();
           break;
+        }
 
         // Framing everything is how you find your work; framing the selection
         // is how you inspect it. One key that guessed between them did the

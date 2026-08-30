@@ -49,6 +49,21 @@ const redoIcon = (
   </svg>
 );
 
+const groupIcon = (
+  <svg fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 16 16">
+    <rect height="6" rx="1" width="6" x="2.5" y="2.5" />
+    <rect height="6" rx="1" width="6" x="7.5" y="7.5" />
+  </svg>
+);
+
+const ungroupIcon = (
+  <svg fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 16 16">
+    <rect height="5" rx="1" width="5" x="1.5" y="1.5" />
+    <rect height="5" rx="1" width="5" x="9.5" y="9.5" />
+    <path d="M7 4.5h3.5M5.5 7v3.5" />
+  </svg>
+);
+
 const panelsIcon = (
   <svg fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 16 16">
     <rect height="10" rx="1.5" width="12" x="2" y="3" />
@@ -69,6 +84,12 @@ export function App() {
   const redo = useEditorStore((state) => state.redo);
   const canUndo = useEditorStore((state) => state.history.past.length > 0);
   const canRedo = useEditorStore((state) => state.history.future.length > 0);
+  const groupSelection = useEditorStore((state) => state.groupSelection);
+  const ungroupSelection = useEditorStore((state) => state.ungroupSelection);
+  const canGroup = selection.length > 1;
+  const canUngroup = document.objects.some(
+    (object) => selection.includes(object.id) && object.type === 'frame',
+  );
 
   const placeShader = (manifest: ShaderManifest, preset: ShaderPreset) => {
     const fill = shaderFill(manifest.id, resolvePreset(manifest, preset.id), preset.id);
@@ -135,6 +156,23 @@ export function App() {
                     setTool('text');
                   }}
                   selected={tool === 'text'}
+                />
+              </Tooltip>
+
+              <Tooltip content="Group" shortcut="⌘G">
+                <IconButton
+                  disabled={!canGroup}
+                  icon={groupIcon}
+                  label="Group"
+                  onClick={groupSelection}
+                />
+              </Tooltip>
+              <Tooltip content="Ungroup" shortcut="⇧⌘G">
+                <IconButton
+                  disabled={!canUngroup}
+                  icon={ungroupIcon}
+                  label="Ungroup"
+                  onClick={ungroupSelection}
                 />
               </Tooltip>
 

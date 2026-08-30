@@ -1,4 +1,5 @@
 import {
+  ancestorsOf,
   createEllipse,
   createRectangle,
   createText,
@@ -341,11 +342,24 @@ export function useCanvasPointer(
       const state = store();
       const point = pointOf(event, event.currentTarget);
       const target = objectAt(state.document, point);
+      if (!target) return;
 
-      if (target?.type === 'text') {
+      // Double-clicking goes one level inward. A group is selected by a single
+      // click; reaching what it holds is deliberate, and reaching it is the
+      // only way to edit anything inside a group at all.
+      const alreadyInside = state.selection.includes(target.id);
+
+      if (!alreadyInside) {
         state.select(target.id);
-        state.beginTextEditing(target.id);
+        // Text opens straight away when it was already the thing selected;
+        // otherwise this click was the one that entered the group.
+        if (target.type === 'text' && ancestorsOf(state.document, target.id).length === 0) {
+          state.beginTextEditing(target.id);
+        }
+        return;
       }
+
+      if (target.type === 'text') state.beginTextEditing(target.id);
     },
     [pointOf, store],
   );
