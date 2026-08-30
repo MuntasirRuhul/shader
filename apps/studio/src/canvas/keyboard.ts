@@ -106,7 +106,8 @@ export type CanvasCommand =
   | { readonly kind: 'clear-selection' }
   | { readonly kind: 'zoom-to-fit' }
   | { readonly kind: 'zoom-to-selection' }
-  | { readonly kind: 'zoom-reset' };
+  | { readonly kind: 'zoom-reset' }
+  | { readonly kind: 'toggle-chrome' };
 
 export interface KeyContext {
   readonly key: string;
@@ -156,6 +157,9 @@ export function commandFor(event: KeyContext): CanvasCommand | null {
   if (event.key === '1' && event.shiftKey) return { kind: 'zoom-to-fit' };
   if (event.key === '2' && event.shiftKey) return { kind: 'zoom-to-selection' };
   if (event.key === '0' && event.shiftKey) return { kind: 'zoom-reset' };
+
+  // The panels get out of the way on one key, as they do in the reference.
+  if (event.key === '\\') return { kind: 'toggle-chrome' };
 
   const tool = TOOL_SHORTCUTS[event.key.toLowerCase()];
   if (tool) return { kind: 'tool', tool };

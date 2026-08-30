@@ -207,3 +207,21 @@ describe('space belongs to whatever has focus before it belongs to the canvas', 
     canvas.remove();
   });
 });
+
+describe('one key clears the panels out of the way', () => {
+  const key = (k: string, over: { shiftKey?: boolean; textEntryFocused?: boolean } = {}) =>
+    commandFor({
+      key: k,
+      shiftKey: over.shiftKey ?? false,
+      accelKey: false,
+      textEntryFocused: over.textEntryFocused ?? false,
+    });
+
+  it('hides and restores them on the backslash', () => {
+    expect(key('\\')).toEqual({ kind: 'toggle-chrome' });
+  });
+
+  it('leaves it alone while typing, since it is a character', () => {
+    expect(key('\\', { textEntryFocused: true })).toBeNull();
+  });
+});

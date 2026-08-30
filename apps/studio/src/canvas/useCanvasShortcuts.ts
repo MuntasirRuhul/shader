@@ -14,6 +14,8 @@ import { fitToBounds } from './viewport';
 export interface ShortcutOptions {
   /** The stage size, needed to fit content into view. */
   readonly viewSize?: () => { width: number; height: number };
+  /** Hides or restores the panels. Owned above the store, which holds no layout. */
+  readonly onToggleChrome?: () => void;
 }
 
 export function useCanvasShortcuts(store: () => EditorState, options: ShortcutOptions = {}): void {
@@ -100,6 +102,10 @@ export function useCanvasShortcuts(store: () => EditorState, options: ShortcutOp
 
         case 'zoom-reset':
           state.resetViewport();
+          break;
+
+        case 'toggle-chrome':
+          options.onToggleChrome?.();
           break;
       }
 

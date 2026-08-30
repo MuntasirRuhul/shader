@@ -14,10 +14,12 @@ import { zoomPercent } from './viewport';
 export interface CanvasStageProps {
   readonly registry: Pick<ShaderRegistry, 'get'>;
   readonly onCompileFailure?: (failure: ShaderCompileFailure) => void;
+  /** Hides or restores the panels; the layout is owned above the store. */
+  readonly onToggleChrome?: () => void;
 }
 
 /** The drawing surface, its selection overlay, and the pointer interaction. */
-export function CanvasStage({ registry, onCompileFailure }: CanvasStageProps) {
+export function CanvasStage({ registry, onCompileFailure, onToggleChrome }: CanvasStageProps) {
   const document = useEditorStore((state) => state.document);
   const selection = useEditorStore((state) => state.selection);
   const viewport = useEditorStore((state) => state.viewport);
@@ -37,7 +39,10 @@ export function CanvasStage({ registry, onCompileFailure }: CanvasStageProps) {
   }, []);
 
   const pointer = useCanvasPointer(useEditorStore.getState);
-  useCanvasShortcuts(useEditorStore.getState, { viewSize });
+  useCanvasShortcuts(useEditorStore.getState, {
+    viewSize,
+    ...(onToggleChrome ? { onToggleChrome } : {}),
+  });
 
   return (
     <div
@@ -104,12 +109,6 @@ export function CanvasStage({ registry, onCompileFailure }: CanvasStageProps) {
           }}
           viewport={viewport}
         />
-      )}
-
-      {document.objects.length === 0 && (
-        <div className={styles.empty}>
-          <p>Choose a shader, or draw a shape with the shape tool</p>
-        </div>
       )}
 
       <div className={styles.zoomLevel}>{zoomPercent(viewport.zoom)}%</div>

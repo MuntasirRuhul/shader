@@ -24,6 +24,10 @@ export interface PanelLayoutController {
   readonly layout: PanelLayout;
   readonly toggleCollapsed: (side: PanelSide) => void;
   readonly setCollapsed: (side: PanelSide, collapsed: boolean) => void;
+  /** Whether every panel is hidden, leaving the canvas alone on screen. */
+  readonly chromeHidden: boolean;
+  /** Hides every panel, or brings them all back to the widths they had. */
+  readonly toggleChrome: () => void;
   /** Sets the expanded width, clamped to the side's limits. */
   readonly setWidth: (side: PanelSide, width: number) => void;
 }
@@ -76,5 +80,19 @@ export function usePanelLayout(
     });
   }, []);
 
-  return { layout, toggleCollapsed, setCollapsed, setWidth };
+  // Hiding is all-or-nothing: the point is to see the work without anything
+  // around it, and a half-cleared screen is not that.
+  const chromeHidden = layout.library.collapsed && layout.inspector.collapsed;
+
+  const toggleChrome = useCallback(() => {
+    setLayout((current) => {
+      const hidden = current.library.collapsed && current.inspector.collapsed;
+      return {
+        library: { ...current.library, collapsed: !hidden },
+        inspector: { ...current.inspector, collapsed: !hidden },
+      };
+    });
+  }, []);
+
+  return { layout, toggleCollapsed, setCollapsed, setWidth, chromeHidden, toggleChrome };
 }
