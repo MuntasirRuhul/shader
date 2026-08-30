@@ -169,3 +169,97 @@ describe('text masks', () => {
     expect(asked).toEqual(['a']);
   });
 });
+
+describe('pointer input reaches each object in its own frame', () => {
+  it('reports the pointer absent when none is given', () => {
+    const seeded = addObjects(document, [createRectangle({ id: 'a', fill: shaderFill('s') })]);
+
+    expect(buildScene(seeded).items[0]?.pointer?.present).toBe(false);
+  });
+
+  it('expresses the pointer as a fraction of the object', () => {
+    const seeded = addObjects(document, [
+      createRectangle({ id: 'a', x: 100, y: 100, width: 200, height: 100, fill: shaderFill('s') }),
+    ]);
+
+    const pointer = buildScene(seeded, { pointer: { x: 150, y: 125 } }).items[0]?.pointer;
+
+    expect(pointer?.present).toBe(true);
+    expect(pointer?.x).toBeCloseTo(0.25, 6);
+    expect(pointer?.y).toBeCloseTo(0.25, 6);
+  });
+
+  it('reports it absent when the pointer is outside the object', () => {
+    const seeded = addObjects(document, [
+      createRectangle({ id: 'a', x: 0, y: 0, width: 100, height: 100, fill: shaderFill('s') }),
+    ]);
+
+    expect(buildScene(seeded, { pointer: { x: 500, y: 500 } }).items[0]?.pointer?.present).toBe(
+      false,
+    );
+  });
+
+  it('follows the object when it moves', () => {
+    const moved = addObjects(document, [
+      createRectangle({ id: 'a', x: 400, y: 400, width: 200, height: 100, fill: shaderFill('s') }),
+    ]);
+
+    // The same canvas point is now the object's centre rather than outside it.
+    const pointer = buildScene(moved, { pointer: { x: 500, y: 450 } }).items[0]?.pointer;
+
+    expect(pointer?.present).toBe(true);
+    expect(pointer?.x).toBeCloseTo(0.5, 6);
+    expect(pointer?.y).toBeCloseTo(0.5, 6);
+  });
+
+  it('accounts for the object being resized', () => {
+    const wide = addObjects(document, [
+      createRectangle({ id: 'a', x: 0, y: 0, width: 400, height: 100, fill: shaderFill('s') }),
+    ]);
+
+    expect(buildScene(wide, { pointer: { x: 100, y: 50 } }).items[0]?.pointer?.x).toBeCloseTo(
+      0.25,
+      6,
+    );
+  });
+
+  it('accounts for the object being rotated', () => {
+    const turned = addObjects(document, [
+      createRectangle({
+        id: 'a',
+        x: 100,
+        y: 100,
+        width: 200,
+        height: 200,
+        rotation: Math.PI / 2,
+        fill: shaderFill('s'),
+      }),
+    ]);
+
+    // The centre stays the centre however the object is turned.
+    const pointer = buildScene(turned, { pointer: { x: 200, y: 200 } }).items[0]?.pointer;
+
+    expect(pointer?.present).toBe(true);
+    expect(pointer?.x).toBeCloseTo(0.5, 6);
+    expect(pointer?.y).toBeCloseTo(0.5, 6);
+  });
+
+  it('gives each object its own view of one pointer', () => {
+    const two = addObjects(document, [
+      createRectangle({ id: 'left', x: 0, y: 0, width: 100, height: 100, fill: shaderFill('s') }),
+      createRectangle({
+        id: 'right',
+        x: 200,
+        y: 0,
+        width: 100,
+        height: 100,
+        fill: shaderFill('s'),
+      }),
+    ]);
+
+    const items = buildScene(two, { pointer: { x: 50, y: 50 } }).items;
+
+    expect(items[0]?.pointer?.present).toBe(true);
+    expect(items[1]?.pointer?.present).toBe(false);
+  });
+});

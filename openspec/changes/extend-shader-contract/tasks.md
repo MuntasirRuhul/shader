@@ -16,8 +16,8 @@
 
 ## 3. Pointer input
 
-- [ ] 3.1 Supply the pointer to an advance in the object's own coordinates, with whether it is over the object; verify the position is correct for a moved, resized, and rotated object
-- [ ] 3.2 Report the pointer as absent when it leaves the object or the canvas; verify the advance is not given a stale position
+- [x] 3.1 Supply the pointer to an advance in the object's own coordinates, with whether it is over the object; verify the position is correct for a moved, resized, and rotated object
+- [x] 3.2 Report the pointer as absent when it leaves the object or the canvas; verify the advance is not given a stale position
 
 ## 4. Contain a failing advance
 

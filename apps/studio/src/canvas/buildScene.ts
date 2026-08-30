@@ -1,9 +1,13 @@
 import {
   isShaderFill,
+  POINTER_ABSENT,
   SOLID_FILL_SHADER_ID,
+  toUnitSpace,
   type CanvasDocument,
   type CanvasObject,
   type RenderItem,
+  type Point,
+  type PointerInput,
   type RenderScene,
   type TexSource,
 } from '@shader/core';
@@ -20,6 +24,12 @@ import {
 export interface SceneOptions {
   /** Supplies a text object's rasterized glyph mask, when one exists. */
   readonly maskFor?: (object: CanvasObject) => TexSource | undefined;
+  /**
+   * Where the pointer is, in canvas coordinates. Each object receives it in
+   * its own frame, so a shader reacting to the pointer needs no knowledge of
+   * where its object sits or how it is turned.
+   */
+  readonly pointer?: Point | undefined;
 }
 
 export function buildScene(document: CanvasDocument, options: SceneOptions = {}): RenderScene {
@@ -36,6 +46,7 @@ export function buildScene(document: CanvasDocument, options: SceneOptions = {})
       objectId: object.id,
       shaderId,
       values,
+      pointer: pointerOver(object, options.pointer),
       transform: {
         x: object.x,
         y: object.y,
@@ -49,4 +60,19 @@ export function buildScene(document: CanvasDocument, options: SceneOptions = {})
   }
 
   return { items };
+}
+
+/**
+ * The pointer in one object's own coordinates.
+ *
+ * Reported absent rather than stale when it is elsewhere: holding the last
+ * position would leave a shader reacting to a cursor that has gone.
+ */
+function pointerOver(object: CanvasObject, pointer: Point | undefined): PointerInput {
+  if (!pointer) return POINTER_ABSENT;
+
+  const local = toUnitSpace(pointer, object);
+  const inside = local.x >= 0 && local.x <= 1 && local.y >= 0 && local.y <= 1;
+
+  return inside ? { present: true, x: local.x, y: local.y } : POINTER_ABSENT;
 }
