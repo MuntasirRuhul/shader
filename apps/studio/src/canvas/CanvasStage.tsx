@@ -2,6 +2,7 @@ import type { ShaderCompileFailure, ShaderRegistry } from '@shader/core';
 import { useCallback, useRef } from 'react';
 import { useEditorStore } from '../store/editorStore';
 import styles from './CanvasStage.module.css';
+import { groundStyle } from './ground';
 import { SelectionOverlay } from './SelectionOverlay';
 import { TextEditor } from './TextEditor';
 import { useCanvasPointer } from './useCanvasPointer';
@@ -24,7 +25,7 @@ export function CanvasStage({ registry, onCompileFailure }: CanvasStageProps) {
   const { canvasRef } = useShaderCanvas({
     document,
     registry,
-    zoom: viewport.zoom,
+    viewport,
     ...(onCompileFailure ? { onCompileFailure } : {}),
   });
 
@@ -48,6 +49,8 @@ export function CanvasStage({ registry, onCompileFailure }: CanvasStageProps) {
       ref={stageRef}
       style={{ cursor: pointer.cursor }}
     >
+      <div aria-hidden className={styles.ground} style={groundStyle(viewport)} />
+
       <canvas aria-label="Drawing surface" className={styles.surface} ref={canvasRef} />
 
       <SelectionOverlay

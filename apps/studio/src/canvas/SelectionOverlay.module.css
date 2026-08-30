@@ -1,5 +1,9 @@
 .overlay {
   position: absolute;
+
+  /* Above the drawing surface. Without this the canvas, which is raised over
+     the ground, would paint across the handles. */
+  z-index: 2;
   inset: 0;
 
   /* The overlay is a display layer; the canvas beneath handles the pointer. */

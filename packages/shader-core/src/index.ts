@@ -84,7 +84,7 @@ export {
   QUAD_VERTEX_SOURCE,
   RESERVED_UNIFORMS,
 } from './runtime/webgl/shaderAbi';
-export { buildModelMatrix } from './runtime/webgl/transform';
+export { applyModelMatrix, buildModelMatrix } from './runtime/webgl/transform';
 export { WebGlRenderer, type WebGlRendererOptions } from './runtime/webgl/WebGlRenderer';
 
 export {

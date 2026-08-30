@@ -5,8 +5,20 @@
   overflow: hidden;
 }
 
+.ground {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background-image: radial-gradient(circle at 1px 1px, var(--sb-border-default) 1px, transparent 0);
+  pointer-events: none;
+}
+
 .surface {
   display: block;
+  position: relative;
+
+  /* Above the ground, below every overlay — which is where the work belongs. */
+  z-index: 1;
   width: 100%;
   height: 100%;
 }
@@ -14,6 +26,7 @@
 .empty {
   display: flex;
   position: absolute;
+  z-index: 2;
   inset: 0;
   flex-direction: column;
   gap: var(--sb-space-3);
@@ -26,6 +39,7 @@
 
 .zoomLevel {
   position: absolute;
+  z-index: 2;
   right: var(--sb-space-5);
   bottom: var(--sb-space-5);
   padding: var(--sb-space-2) var(--sb-space-4);

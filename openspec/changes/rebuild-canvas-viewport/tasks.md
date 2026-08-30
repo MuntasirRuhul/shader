@@ -16,14 +16,14 @@
 ## 3. Supply the viewport from the application
 
 - [ ] 3.1 Pass the viewport from the editor's state to the renderer, replacing the bare magnification the canvas hook takes today; verify a pan and a zoom both reach the renderer
-- [ ] 3.2 Verify an object's drawn region and its selection indicator coincide at a panned view, at a magnified view, and at both — the defect this change exists to close
-- [ ] 3.3 Verify the same for a text object and its editor, which is positioned by the viewport independently
+- [x] 3.2 Verify an object's drawn region and its selection indicator coincide at a panned view, at a magnified view, and at both — the defect this change exists to close
+- [x] 3.3 Verify the same for a text object and its editor, which is positioned by the viewport independently
 
 ## 4. Ground the canvas
 
-- [ ] 4.1 Draw a tiled ground beneath the transparent canvas, positioned and scaled from the viewport; verify panning across an empty region visibly moves it
-- [ ] 4.2 Step the ground's spacing by a fixed factor as magnification crosses thresholds; verify the spacing stays within a legible range across the full zoom range rather than collapsing or vanishing
-- [ ] 4.3 Verify the ground sits behind every object and every selection indicator, and that it costs nothing while the render loop is idle
+- [x] 4.1 Draw a tiled ground beneath the transparent canvas, positioned and scaled from the viewport; verify panning across an empty region visibly moves it
+- [x] 4.2 Step the ground's spacing by a fixed factor as magnification crosses thresholds; verify the spacing stays within a legible range across the full zoom range rather than collapsing or vanishing
+- [x] 4.3 Verify the ground sits behind every object and every selection indicator, and that it costs nothing while the render loop is idle
 
 ## 5. Pan and frame
 

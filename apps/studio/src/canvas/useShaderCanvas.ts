@@ -1,8 +1,10 @@
 import {
   acquireContext,
   AnimationLoop,
+  IDENTITY_VIEWPORT,
   WebGlRenderer,
   type CanvasDocument,
+  type RenderViewport,
   type RuntimeStatus,
   type ShaderCompileFailure,
   type ShaderRegistry,
@@ -15,8 +17,12 @@ import { TextMaskCache } from './textRasterizer';
 export interface ShaderCanvasOptions {
   readonly document: CanvasDocument;
   readonly registry: Pick<ShaderRegistry, 'get'>;
-  /** Text masks are rendered for the current magnification. */
-  readonly zoom?: number;
+  /**
+   * How the canvas is being looked at. The renderer places objects through it,
+   * so that what is drawn and what is overlaid agree; text masks are also
+   * rasterized for the current magnification.
+   */
+  readonly viewport?: RenderViewport;
   readonly onCompileFailure?: (failure: ShaderCompileFailure) => void;
 }
 
@@ -50,8 +56,9 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
   documentRef.current = options.document;
   const registryRef = useRef(options.registry);
   registryRef.current = options.registry;
-  const zoomRef = useRef(options.zoom ?? 1);
-  zoomRef.current = options.zoom ?? 1;
+  const viewport = options.viewport ?? IDENTITY_VIEWPORT;
+  const viewportRef = useRef(viewport);
+  viewportRef.current = viewport;
   const failureRef = useRef(options.onCompileFailure);
   failureRef.current = options.onCompileFailure;
 
@@ -65,7 +72,7 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
 
     const scene = buildScene(document, {
       maskFor: (object) =>
-        object.type === 'text' ? masks.maskFor(object, zoomRef.current, ratio) : undefined,
+        object.type === 'text' ? masks.maskFor(object, viewportRef.current.zoom, ratio) : undefined,
     });
 
     // Drop masks for objects the scene no longer contains.
@@ -122,6 +129,7 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
           onCompileFailure: (failure) => failureRef.current?.(failure),
         },
       });
+      renderer.setViewport(viewportRef.current);
       rendererRef.current = renderer;
 
       const loop = new AnimationLoop({
@@ -166,6 +174,10 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
 
   // Push the scene whenever the document changes, and draw once so a still
   // shader reflects the edit even while the loop is idle.
+  //
+  // Magnification is a dependency because a text mask is rasterized for it: a
+  // magnified glyph run has to be re-rendered, not enlarged. Panning is not,
+  // which is why it is a separate effect below.
   useEffect(() => {
     const renderer = rendererRef.current;
     const loop = loopRef.current;
@@ -174,7 +186,18 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
     renderer.setScene(sceneFor(options.document));
     loop.reconcile();
     if (!loop.isRunning) loop.renderOnce();
-  }, [options.document, options.zoom, sceneFor]);
+  }, [options.document, viewport.zoom, sceneFor]);
+
+  // Push the view on its own. A pan is a redraw, not a document change, so it
+  // rebuilds no scene and re-examines no resource.
+  useEffect(() => {
+    const renderer = rendererRef.current;
+    const loop = loopRef.current;
+    if (!renderer || !loop) return;
+
+    renderer.setViewport(viewport);
+    if (!loop.isRunning) loop.renderOnce();
+  }, [viewport]);
 
   // Redraw on every value a drag publishes. React is not involved.
   useEffect(
