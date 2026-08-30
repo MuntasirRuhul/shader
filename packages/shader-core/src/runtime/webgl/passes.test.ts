@@ -132,7 +132,7 @@ describe('rendering passes in order', () => {
     const written = fieldTarget ? gl.textureOf(fieldTarget) : null;
 
     // The second pass samples exactly the texture the first just wrote.
-    expect(gl.draws[1]?.textures.get(1)).toBe(written);
+    expect(gl.draws[1]?.textures.get(2)).toBe(written);
   });
 
   it('gives each pass the object size as its resolution', () => {
@@ -178,7 +178,7 @@ describe('a pass reading its own previous frame', () => {
     renderer.setScene(scene(item({ shaderId: 'feedback' })));
     renderer.renderFrame(0);
 
-    const sampled = gl.draws[0]?.textures.get(1);
+    const sampled = gl.draws[0]?.textures.get(2);
     expect(sampled).not.toBeNull();
     // Both buffers were cleared when allocated, so nothing undefined is read.
     expect(gl.clears.length).toBeGreaterThanOrEqual(2);
@@ -192,7 +192,7 @@ describe('a pass reading its own previous frame', () => {
     renderer.renderFrame(0.016);
 
     const writtenTo = gl.draws[0]?.target;
-    const read = gl.draws[0]?.textures.get(1);
+    const read = gl.draws[0]?.textures.get(2);
     expect(writtenTo).toBeDefined();
     expect(read).not.toBe(writtenTo ? gl.textureOf(writtenTo) : null);
   });
@@ -206,7 +206,7 @@ describe('a pass reading its own previous frame', () => {
     gl.reset();
     renderer.renderFrame(0.016);
 
-    const read = gl.draws[0]?.textures.get(1);
+    const read = gl.draws[0]?.textures.get(2);
     expect(read).toBe(firstFrameOutput ? gl.textureOf(firstFrameOutput) : null);
   });
 

@@ -28,6 +28,8 @@ export interface RenderItem {
   readonly opacity: number;
   /** Optional alpha mask, used by text objects to shape the shader's output. */
   readonly mask?: TexSource;
+  /** The picture to draw, for an object created from a file. */
+  readonly image?: TexSource;
   /**
    * Where the pointer is over this object, for a shader that reacts to it.
    * Absent when the pointer is elsewhere.

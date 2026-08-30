@@ -1,4 +1,4 @@
-import { ShaderRegistry, solidFillManifest } from '@shader/core';
+import { imageFillManifest, ShaderRegistry, solidFillManifest } from '@shader/core';
 import { gradientBlurManifest } from './gradientBlur';
 import { meshGradientManifest } from './meshGradient';
 import { metaballManifest } from './metaball';
@@ -15,6 +15,7 @@ export const registry = new ShaderRegistry();
 // The solid fill is how a plain-coloured object is drawn. It is registered
 // here but excluded from the library, since it is not something a user picks.
 registry.registerOrThrow(solidFillManifest);
+registry.registerOrThrow(imageFillManifest);
 
 registry.registerOrThrow(meshGradientManifest);
 registry.registerOrThrow(metaballManifest);

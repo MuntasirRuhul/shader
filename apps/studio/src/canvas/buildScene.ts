@@ -1,4 +1,5 @@
 import {
+  IMAGE_FILL_SHADER_ID,
   isShaderFill,
   POINTER_ABSENT,
   SOLID_FILL_SHADER_ID,
@@ -24,6 +25,8 @@ import {
 export interface SceneOptions {
   /** Supplies a text object's rasterized glyph mask, when one exists. */
   readonly maskFor?: (object: CanvasObject) => TexSource | undefined;
+  /** Supplies an image object's decoded picture, once it has decoded. */
+  readonly imageFor?: (object: CanvasObject) => TexSource | undefined;
   /**
    * Where the pointer is, in canvas coordinates. Each object receives it in
    * its own frame, so a shader reacting to the pointer needs no knowledge of
@@ -45,7 +48,12 @@ export function buildScene(document: CanvasDocument, options: SceneOptions = {})
     if (object.type === 'text' && object.text.trim() === '') continue;
 
     const mask = options.maskFor?.(object);
-    const shaderId = isShaderFill(object.fill) ? object.fill.shaderId : SOLID_FILL_SHADER_ID;
+    const image = options.imageFor?.(object);
+
+    // An imported picture draws itself unless a shader has been put over it,
+    // in which case the picture is still bound for that shader to sample.
+    const builtIn = object.type === 'image' ? IMAGE_FILL_SHADER_ID : SOLID_FILL_SHADER_ID;
+    const shaderId = isShaderFill(object.fill) ? object.fill.shaderId : builtIn;
     const values = isShaderFill(object.fill) ? object.fill.values : { color: object.fill.color };
 
     items.push({
@@ -62,6 +70,7 @@ export function buildScene(document: CanvasDocument, options: SceneOptions = {})
       },
       opacity: object.opacity,
       ...(mask === undefined ? {} : { mask }),
+      ...(image === undefined ? {} : { image }),
     });
   }
 

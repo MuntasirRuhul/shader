@@ -9,7 +9,7 @@ import type { ParameterValues } from '../registry/parameterSchema';
  * without a graphics context.
  */
 
-export const OBJECT_TYPES = ['rectangle', 'ellipse', 'text'] as const;
+export const OBJECT_TYPES = ['rectangle', 'ellipse', 'text', 'image'] as const;
 export type CanvasObjectType = (typeof OBJECT_TYPES)[number];
 
 export function isCanvasObjectType(value: unknown): value is CanvasObjectType {
@@ -95,10 +95,38 @@ export interface TextObject extends BaseObject {
   readonly textSettings: TextSettings;
 }
 
-export type CanvasObject = RectangleObject | EllipseObject | TextObject;
+/**
+ * A bitmap or vector brought in from a file.
+ *
+ * The source travels with the document rather than being referenced on disk:
+ * a document that stops working because a file moved is not a document. It
+ * costs size — a photograph grows by about a third as text — which is why the
+ * importer says so before it embeds one.
+ */
+export interface ImageObject extends BaseObject {
+  readonly type: 'image';
+  /** A `data:` URI. Self-contained, so the document survives being sent. */
+  readonly source: string;
+  /** What the file says it is, e.g. `image/png` or `image/svg+xml`. */
+  readonly mediaType: string;
+  /** The size the file itself declares, for restoring its proportions. */
+  readonly naturalWidth: number;
+  readonly naturalHeight: number;
+}
+
+export type CanvasObject = RectangleObject | EllipseObject | TextObject | ImageObject;
 
 export function isTextObject(object: CanvasObject): object is TextObject {
   return object.type === 'text';
+}
+
+export function isImageObject(object: CanvasObject): object is ImageObject {
+  return object.type === 'image';
+}
+
+/** Whether a source is vector, and so worth rasterizing again as it is magnified. */
+export function isVectorImage(object: ImageObject): boolean {
+  return object.mediaType === 'image/svg+xml';
 }
 
 /** The document format version. Stored documents carry it so they can migrate. */
@@ -197,6 +225,39 @@ export function createText(overrides: Partial<TextObject> = {}): TextObject {
     type: 'text',
     text,
     textSettings: settings,
+  };
+}
+
+/**
+ * An image object, sized to the file's own proportions.
+ *
+ * A picture arrives with a shape of its own, and the one thing nobody wants is
+ * to have to restore it by hand. It is fitted inside `maxSize` so a photograph
+ * from a modern camera does not arrive larger than the canvas.
+ */
+export function createImage(
+  source: string,
+  mediaType: string,
+  naturalWidth: number,
+  naturalHeight: number,
+  overrides: Partial<ImageObject> = {},
+): ImageObject {
+  const longest = Math.max(naturalWidth, naturalHeight, 1);
+  const fit = Math.min(1, 640 / longest);
+
+  return {
+    ...baseDefaults({
+      width: Math.max(1, Math.round(naturalWidth * fit)),
+      height: Math.max(1, Math.round(naturalHeight * fit)),
+      ...overrides,
+    }),
+    id: overrides.id ?? nextObjectId('image'),
+    name: overrides.name ?? 'Image',
+    type: 'image',
+    source,
+    mediaType,
+    naturalWidth,
+    naturalHeight,
   };
 }
 

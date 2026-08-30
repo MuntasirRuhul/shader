@@ -90,15 +90,18 @@ export { WebGlRenderer, type WebGlRendererOptions } from './runtime/webgl/WebGlR
 export {
   createDocument,
   createEllipse,
+  createImage,
   createRectangle,
   createText,
   DEFAULT_FILL,
   DEFAULT_TEXT_SETTINGS,
   DOCUMENT_VERSION,
   isCanvasObjectType,
+  isImageObject,
   isShaderFill,
   isSolidFill,
   isTextObject,
+  isVectorImage,
   nextObjectId,
   OBJECT_TYPES,
   resetObjectIds,
@@ -109,6 +112,7 @@ export {
   type CanvasObjectType,
   type EllipseObject,
   type Fill,
+  type ImageObject,
   type RectangleObject,
   type ShaderFill,
   type SolidFill,
@@ -162,6 +166,7 @@ export {
 
 export { isTargetable, objectAt, objectsAt, objectsWithin } from './canvas/hitTesting';
 
+export { IMAGE_FILL_SHADER_ID, imageFillManifest } from './runtime/imageShader';
 export { SOLID_FILL_SHADER_ID, solidFillManifest } from './runtime/solidShader';
 
 export {

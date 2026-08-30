@@ -305,10 +305,14 @@ describe('no shipped shader knows the view exists', () => {
     expect([...after]).toEqual([...before]);
   });
 
-  it('leaves the reserved uniform set untouched', () => {
-    // Nothing was added for shaders to read: the view never reaches them.
+  it('offers a shader nothing about the view to read', () => {
+    // Pinned as a whole so a uniform cannot be added without saying so here:
+    // every one of these is about the object, and none about where it is being
+    // looked at from.
     expect(Object.values(RESERVED_UNIFORMS).sort()).toEqual([
+      'uHasImage',
       'uHasMask',
+      'uImage',
       'uMask',
       'uOpacity',
       'uResolution',

@@ -10,6 +10,7 @@ import './global.css';
 import { CanvasStage } from './canvas/CanvasStage';
 import { Inspector } from './inspector/Inspector';
 import { ShaderLibrary } from './panels/ShaderLibrary';
+import { ImageImport } from './persistence/ImageImport';
 import { useDocumentPersistence } from './persistence/useDocumentPersistence';
 import { libraryShaders, registry } from './shaders/registry';
 import { AppShell } from './shell/AppShell';
@@ -136,6 +137,8 @@ export function App() {
                   selected={tool === 'text'}
                 />
               </Tooltip>
+
+              <ImageImport />
 
               <Tooltip content="Undo" shortcut="⌘Z">
                 <IconButton disabled={!canUndo} icon={undoIcon} label="Undo" onClick={undo} />

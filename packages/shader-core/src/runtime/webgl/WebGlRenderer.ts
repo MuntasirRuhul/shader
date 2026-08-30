@@ -21,8 +21,10 @@ import { FULL_TARGET_MATRIX, PRESENT_SOURCE_UNIFORM, RESERVED_UNIFORMS } from '.
 import { buildModelMatrix } from './transform';
 import { bindParameters } from './uniformBinding';
 
-/** The first texture unit a pass may read through; unit 0 is the mask's. */
-const FIRST_PASS_UNIT = 1;
+/** Unit 0 is the mask's, unit 1 the image's; a pass reads from 2 upward. */
+const MASK_UNIT = 0;
+const IMAGE_UNIT = 1;
+const FIRST_PASS_UNIT = 2;
 
 /** How a shader's targets are keyed: they belong to an object, not a shader. */
 function targetKey(objectId: string, passName: string): string {
@@ -70,7 +72,7 @@ export interface WebGlRendererOptions {
   readonly sizing?: SurfaceSizeOptions;
 }
 
-interface MaskTexture {
+interface UploadedTexture {
   readonly texture: GlTexture;
   revision: number;
 }
@@ -93,7 +95,8 @@ export class WebGlRenderer implements RenderingPort {
 
   private programs: ProgramCache;
   private targets: RenderTargetStore;
-  private readonly masks = new Map<string, MaskTexture>();
+  private readonly masks = new Map<string, UploadedTexture>();
+  private readonly images = new Map<string, UploadedTexture>();
   private vao: GlVertexArray | null = null;
 
   /**
@@ -396,6 +399,8 @@ export class WebGlRenderer implements RenderingPort {
     );
     gl.uniform1f(location(RESERVED_UNIFORMS.time), elapsedSeconds);
 
+    this.bindImage(item, location(RESERVED_UNIFORMS.hasImage), location(RESERVED_UNIFORMS.image));
+
     if (options.final) {
       gl.uniform1f(location(RESERVED_UNIFORMS.opacity), item.opacity);
       this.bindMask(item, location(RESERVED_UNIFORMS.hasMask), location(RESERVED_UNIFORMS.mask));
@@ -475,17 +480,46 @@ export class WebGlRenderer implements RenderingPort {
       return;
     }
 
-    const texture = this.maskTextureFor(item.objectId, item.mask);
-    gl.activeTexture(gl.TEXTURE0);
+    const texture = this.uploadedTexture(this.masks, item.objectId, item.mask);
+    gl.activeTexture(gl.TEXTURE0 + MASK_UNIT);
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.uniform1i(maskLocation, 0);
+    gl.uniform1i(maskLocation, MASK_UNIT);
     gl.uniform1i(hasMaskLocation, 1);
   }
 
-  /** Uploads a mask only when its contents have actually changed. */
-  private maskTextureFor(objectId: string, mask: TexSource): GlTexture | null {
+  /**
+   * Binds an object's picture, if it has one and it has finished decoding.
+   *
+   * Reported absent rather than left stale: a shader drawing whatever was in
+   * the unit before would show the previous object's picture for a frame.
+   */
+  private bindImage(
+    item: RenderItem,
+    hasImageLocation: ReturnType<GlContext['getUniformLocation']>,
+    imageLocation: ReturnType<GlContext['getUniformLocation']>,
+  ): void {
     const { gl } = this;
-    let entry = this.masks.get(objectId);
+
+    if (!item.image) {
+      gl.uniform1i(hasImageLocation, 0);
+      return;
+    }
+
+    const texture = this.uploadedTexture(this.images, item.objectId, item.image);
+    gl.activeTexture(gl.TEXTURE0 + IMAGE_UNIT);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.uniform1i(imageLocation, IMAGE_UNIT);
+    gl.uniform1i(hasImageLocation, 1);
+  }
+
+  /** Uploads a texture only when its contents have actually changed. */
+  private uploadedTexture(
+    into: Map<string, UploadedTexture>,
+    objectId: string,
+    source: TexSource,
+  ): GlTexture | null {
+    const { gl } = this;
+    let entry = into.get(objectId);
 
     if (!entry) {
       const texture = gl.createTexture();
@@ -496,14 +530,14 @@ export class WebGlRenderer implements RenderingPort {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       entry = { texture, revision: -1 };
-      this.masks.set(objectId, entry);
+      into.set(objectId, entry);
     }
 
-    if (entry.revision !== mask.revision) {
+    if (entry.revision !== source.revision) {
       gl.bindTexture(gl.TEXTURE_2D, entry.texture);
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, mask.source);
-      entry.revision = mask.revision;
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source.source);
+      entry.revision = source.revision;
     }
 
     return entry.texture;
@@ -512,10 +546,12 @@ export class WebGlRenderer implements RenderingPort {
   /** Releases resources for objects and shaders the scene no longer contains. */
   private releaseUnusedResources(): void {
     const liveObjects = new Set(this.scene.items.map((item) => item.objectId));
-    for (const [objectId, entry] of this.masks) {
-      if (!liveObjects.has(objectId)) {
-        this.gl.deleteTexture(entry.texture);
-        this.masks.delete(objectId);
+    for (const held of [this.masks, this.images]) {
+      for (const [objectId, entry] of held) {
+        if (!liveObjects.has(objectId)) {
+          this.gl.deleteTexture(entry.texture);
+          held.delete(objectId);
+        }
       }
     }
 
@@ -560,6 +596,7 @@ export class WebGlRenderer implements RenderingPort {
     this.programs.forgetAll();
     this.targets.forgetAll();
     this.masks.clear();
+    this.images.clear();
     this.vao = null;
     this.reportedFailures.clear();
     this.setStatus({ kind: 'context-lost' });
@@ -594,6 +631,11 @@ export class WebGlRenderer implements RenderingPort {
     return this.masks.size;
   }
 
+  /** How many image textures are currently held. */
+  get imageCount(): number {
+    return this.images.size;
+  }
+
   /** How many intermediate pass targets are currently held. */
   get targetCount(): number {
     return this.targets.size;
@@ -609,10 +651,10 @@ export class WebGlRenderer implements RenderingPort {
 
     this.programs.releaseAll();
     this.targets.releaseAll();
-    for (const entry of this.masks.values()) {
-      this.gl.deleteTexture(entry.texture);
+    for (const held of [this.masks, this.images]) {
+      for (const entry of held.values()) this.gl.deleteTexture(entry.texture);
+      held.clear();
     }
-    this.masks.clear();
 
     if (this.vao) {
       this.gl.deleteVertexArray(this.vao);

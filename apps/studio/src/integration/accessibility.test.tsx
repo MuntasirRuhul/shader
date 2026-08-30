@@ -1,5 +1,5 @@
 import { createRectangle, resetObjectIds, shaderFill } from '@shader/core';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../App';
@@ -66,11 +66,30 @@ describe('everything is reachable with the keyboard alone', () => {
       }
     }
 
-    expect([...reached].some((name) => /select tool/i.test(name))).toBe(true);
-    expect([...reached].some((name) => /shape tool/i.test(name))).toBe(true);
-    expect([...reached].some((name) => /text tool/i.test(name))).toBe(true);
-    expect([...reached].some((name) => /import/i.test(name))).toBe(true);
-    expect([...reached].some((name) => /export/i.test(name))).toBe(true);
+    const reaches = (pattern: RegExp) => [...reached].some((name) => pattern.test(name));
+
+    expect(reaches(/select tool/i)).toBe(true);
+    expect(reaches(/shape tool/i)).toBe(true);
+    expect(reaches(/text tool/i)).toBe(true);
+    expect(reaches(/import an image/i)).toBe(true);
+    expect(reaches(/panels/i)).toBe(true);
+    expect(reaches(/export/i)).toBe(true);
+    // Walking every stop is slow, and the toolbar has grown; the count is what
+    // makes the case worth having, so it is given room rather than trimmed.
+  }, 20000);
+
+  it('offers undo only once there is something to undo', () => {
+    // A disabled control is correctly skipped by the tab order, so the
+    // question is not whether it can be reached but whether it turns on.
+    render(<App />);
+
+    expect(screen.getByLabelText('Undo')).toBeDisabled();
+
+    act(() => {
+      useEditorStore.getState().addObject(createRectangle({ width: 10, height: 10 }));
+    });
+
+    expect(screen.getByLabelText('Undo')).toBeEnabled();
   });
 
   it('never leaves focus stranded on the body', async () => {

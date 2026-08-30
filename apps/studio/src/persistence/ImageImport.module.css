@@ -1,0 +1,21 @@
+/* Present for the picker to be driven from a button, and never seen. */
+.fileInput {
+  display: none;
+}
+
+.refusal {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  max-width: 320px;
+  margin: 0 0 var(--sb-space-3);
+  padding: var(--sb-space-3) var(--sb-space-4);
+  transform: translateX(-50%);
+  border: 1px solid var(--sb-border-default);
+  border-radius: var(--sb-radius-md);
+  background-color: var(--sb-surface-overlay);
+  color: var(--sb-text-secondary);
+  font-size: var(--sb-font-size-sm);
+  line-height: var(--sb-line-height-normal);
+  text-align: center;
+}

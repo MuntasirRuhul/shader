@@ -24,6 +24,10 @@ export const RESERVED_UNIFORMS = {
   mask: 'uMask',
   /** Whether a mask is bound. */
   hasMask: 'uHasMask',
+  /** An imported picture, for an object created from a file. */
+  image: 'uImage',
+  /** Whether an image is bound; a file still decoding has none yet. */
+  hasImage: 'uHasImage',
 } as const;
 
 export const RESERVED_UNIFORM_NAMES: readonly string[] = Object.values(RESERVED_UNIFORMS);
@@ -75,6 +79,8 @@ uniform float ${RESERVED_UNIFORMS.time};
 uniform float ${RESERVED_UNIFORMS.opacity};
 uniform sampler2D ${RESERVED_UNIFORMS.mask};
 uniform bool ${RESERVED_UNIFORMS.hasMask};
+uniform sampler2D ${RESERVED_UNIFORMS.image};
+uniform bool ${RESERVED_UNIFORMS.hasImage};
 `;
 
 /** Applied after the shader's own `main`, to fold in opacity and any mask. */

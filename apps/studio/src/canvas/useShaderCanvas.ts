@@ -4,6 +4,7 @@ import {
   IDENTITY_VIEWPORT,
   WebGlRenderer,
   type CanvasDocument,
+  type RenderScene,
   type RenderViewport,
   type RuntimeStatus,
   type ShaderCompileFailure,
@@ -13,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { onFontsChanged } from '../inspector/fonts';
 import { transientChannel, type TransientEdit } from '../store/transientChannel';
 import { buildScene } from './buildScene';
+import { ImageCache } from './imageCache';
 import { TextMaskCache } from './textRasterizer';
 
 /** The object properties a canvas drag changes, as opposed to shader values. */
@@ -56,6 +58,19 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const observerRef = useRef<ResizeObserver | null>(null);
   const masksRef = useRef(new TextMaskCache());
+  /** Set below, once the scene builder exists; the cache outlives each render. */
+  const sceneForRef = useRef<(document: CanvasDocument) => RenderScene>(() => ({ items: [] }));
+  /** Decoding is asynchronous, so an arriving picture asks for a fresh frame. */
+  const imagesRef = useRef(
+    new ImageCache(() => {
+      const renderer = rendererRef.current;
+      const loop = loopRef.current;
+      if (!renderer || !loop) return;
+
+      renderer.setScene(sceneForRef.current(documentRef.current));
+      if (!loop.isRunning) loop.renderOnce();
+    }),
+  );
 
   const [status, setStatus] = useState<RuntimeStatus>({ kind: 'ready' });
 
@@ -112,6 +127,8 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
     };
   }, []);
 
+  sceneForRef.current = sceneFor;
+
   const teardown = useCallback(() => {
     loopRef.current?.dispose();
     loopRef.current = null;
@@ -120,6 +137,7 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
     observerRef.current?.disconnect();
     observerRef.current = null;
     masksRef.current.clear();
+    imagesRef.current.clear();
   }, []);
 
   const attach = useCallback(
