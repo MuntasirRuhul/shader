@@ -55,6 +55,18 @@ the shader core cannot import the application, the design system cannot import
 the core, and the core cannot import React at all. That last rule is what keeps
 it testable without a DOM.
 
+## The shaders it ships
+
+| Shader        | What it does                                                                                           |
+| ------------- | ------------------------------------------------------------------------------------------------------ |
+| Mesh gradient | Colour poles blended through a field-weighted OKLab average, with an animated warp                     |
+| Metaball      | Overlapping colour fields that merge where they meet. Still by design — the source shader has no clock |
+| Ribbon        | A drifting field sliced into coloured contour bands, seen through a glass lens                         |
+| Soft gradient | A two-colour gradient with a slow animated warp                                                        |
+
+Each is one file under `apps/studio/src/shaders/`, registered in
+`registry.ts`. Nothing else knows they exist.
+
 ## Adding a shader
 
 Write a manifest and register it. That is the whole procedure.
