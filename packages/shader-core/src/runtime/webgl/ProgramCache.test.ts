@@ -11,6 +11,71 @@ beforeEach(() => {
   cache = new ProgramCache(gl);
 });
 
+describe("compiling one of a shader's passes", () => {
+  const twoPass = manifestWith({
+    id: 'two-pass',
+    passes: [
+      { name: 'field', fragmentSource: 'void main() { outColor = vec4(1.0); }' },
+      {
+        name: 'draw',
+        fragmentSource: 'void main() { outColor = texture(uField, vUv); }',
+        reads: [{ uniform: 'uField', pass: 'field' }],
+      },
+    ],
+  });
+
+  it('declares the samplers the pass reads through', () => {
+    const pass = twoPass.passes?.[1];
+    if (!pass) throw new Error('fixture has no second pass');
+    cache.acquirePass(twoPass, pass);
+    const fragment = gl.compiledSources[1] ?? '';
+
+    expect(fragment).toContain('uniform sampler2D uField;');
+    // And the shader's parameters, which a pass shares.
+    expect(fragment).toContain('uniform float speed;');
+  });
+
+  it('compiles each pass as its own program', () => {
+    for (const pass of twoPass.passes ?? []) cache.acquirePass(twoPass, pass);
+
+    expect(cache.compilations).toBe(2);
+    expect(cache.size).toBe(2);
+  });
+
+  it('reuses a pass program rather than recompiling it', () => {
+    const pass = twoPass.passes?.[0];
+    if (!pass) throw new Error('fixture has no first pass');
+    cache.acquirePass(twoPass, pass);
+    cache.acquirePass(twoPass, pass);
+
+    expect(cache.compilations).toBe(1);
+  });
+
+  it('names the pass in a compile failure, since a shader has several', () => {
+    const failing = new ProgramCache(new FakeGl({ failCompileMatching: /shaderMain/ }));
+    const pass = twoPass.passes?.[0];
+    if (!pass) throw new Error('fixture has no first pass');
+
+    const result = failing.acquirePass(twoPass, pass);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.failure.shaderId).toBe('two-pass');
+      expect(result.failure.diagnostic).toContain('Pass "field"');
+    }
+  });
+
+  it('releases a shader pass programs along with its own', () => {
+    for (const pass of twoPass.passes ?? []) cache.acquirePass(twoPass, pass);
+    expect(cache.size).toBe(2);
+
+    cache.release('two-pass');
+
+    expect(cache.size).toBe(0);
+    expect(gl.livePrograms).toBe(0);
+  });
+});
+
 describe('compiling a shader for the first time', () => {
   it('compiles and links it', () => {
     const result = cache.acquire(sampleManifest);
@@ -54,6 +119,34 @@ describe('compiling a shader for the first time', () => {
     expect(fragment).toContain('uniform vec2 poles_position[4];');
     expect(fragment).toContain('uniform float poles_radius[4];');
     expect(fragment).toContain('uniform int poles_count;');
+  });
+
+  it('declares the simulation state as uniforms too', () => {
+    // State binds through the parameter binding, so it is declared the same
+    // way: a shader author writes neither by hand.
+    cache.acquire(
+      manifestWith({
+        id: 'stateful',
+        simulation: {
+          schema: [
+            {
+              name: 'phase',
+              label: 'Phase',
+              type: 'number',
+              defaultValue: 0,
+              min: 0,
+              max: 1,
+              step: 0.01,
+            },
+          ],
+          initial: { phase: 0 },
+          advance: (previous) => previous,
+        },
+      }),
+    );
+    const fragment = gl.compiledSources[1] ?? '';
+
+    expect(fragment).toContain('uniform float phase;');
   });
 
   it('uses the runtime quad vertex stage by default', () => {

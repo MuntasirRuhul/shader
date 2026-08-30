@@ -106,6 +106,33 @@ export function composeFragmentSource(shaderSource: string, uniformDeclarations 
   return [FRAGMENT_PREAMBLE, uniformDeclarations, body, FRAGMENT_EPILOGUE].join('\n');
 }
 
+/** The sampler the built-in compositing program reads a finished pass through. */
+export const PRESENT_SOURCE_UNIFORM = 'uPassOutput';
+
+/**
+ * The built-in program that draws a finished pass onto the object.
+ *
+ * Written in the same ABI every shader uses, so opacity and masking are
+ * applied by the same epilogue rather than by a second implementation.
+ */
+export const PRESENT_FRAGMENT_SOURCE = `void main() {
+  outColor = texture(${PRESENT_SOURCE_UNIFORM}, vUv);
+}`;
+
+/**
+ * Maps the unit quad onto a whole intermediate target.
+ *
+ * An intermediate pass has no place on the canvas: it fills its target edge to
+ * edge, and `vUv` runs 0..1 across it exactly as it does across the object, so
+ * what a later pass samples lines up with what it would have drawn.
+ */
+// prettier-ignore
+export const FULL_TARGET_MATRIX = new Float32Array([
+  2, 0, 0,
+  0, 2, 0,
+  -1, -1, 1,
+]);
+
 /** Whether a parameter name would collide with a uniform the runtime owns. */
 export function isReservedUniform(name: string): boolean {
   return RESERVED_UNIFORM_NAMES.includes(name);

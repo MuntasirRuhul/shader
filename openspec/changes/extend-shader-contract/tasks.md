@@ -26,13 +26,13 @@
 
 ## 5. Rendering passes
 
-- [ ] 5.1 Extend the manifest so a shader may declare passes in order, each with its own program and what it reads; verify a manifest declaring none renders exactly as before
-- [ ] 5.2 Reject a pass that reads a later pass, naming the shader and both passes; verify a pass reading an earlier one is accepted
-- [ ] 5.3 Render passes in order through intermediate targets, drawing only the last to the object; verify each pass runs once and only the final output appears
-- [ ] 5.4 Give a pass that reads an earlier pass that pass's current-frame output; verify it
-- [ ] 5.5 Implement a pass reading what it wrote on the previous frame, swapping targets between frames; verify it receives the previous frame's output and that the first frame receives a cleared target rather than undefined contents
-- [ ] 5.6 Resize intermediate targets with the object; verify what a pass reads stays aligned with what is drawn
-- [ ] 5.7 Release intermediate targets when an object is deleted, when a fill changes to need fewer, and on teardown; verify none remain allocated in each case
+- [x] 5.1 Extend the manifest so a shader may declare passes in order, each with its own program and what it reads; verify a manifest declaring none renders exactly as before
+- [x] 5.2 Reject a pass that reads a later pass, naming the shader and both passes; verify a pass reading an earlier one is accepted
+- [x] 5.3 Render passes in order through intermediate targets, drawing only the last to the object; verify each pass runs once and only the final output appears
+- [x] 5.4 Give a pass that reads an earlier pass that pass's current-frame output; verify it
+- [x] 5.5 Implement a pass reading what it wrote on the previous frame, swapping targets between frames; verify it receives the previous frame's output and that the first frame receives a cleared target rather than undefined contents
+- [x] 5.6 Resize intermediate targets with the object; verify what a pass reads stays aligned with what is drawn
+- [x] 5.7 Release intermediate targets when an object is deleted, when a fill changes to need fewer, and on teardown; verify none remain allocated in each case
 
 ## 6. Re-port the metaball
 

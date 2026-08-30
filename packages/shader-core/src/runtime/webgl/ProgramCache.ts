@@ -1,14 +1,36 @@
-import type { ShaderManifest } from '../../registry/manifest';
+import type { ShaderManifest, ShaderPass } from '../../registry/manifest';
 import type { ShaderCompileFailure } from '../renderingPort';
 import type { GlContext, GlProgram, GlUniformLocation } from './glTypes';
-import { composeFragmentSource, QUAD_VERTEX_SOURCE } from './shaderAbi';
+import {
+  composeFragmentSource,
+  PRESENT_FRAGMENT_SOURCE,
+  PRESENT_SOURCE_UNIFORM,
+  QUAD_VERTEX_SOURCE,
+} from './shaderAbi';
 import { declareUniforms } from './uniformBinding';
+
+/** The key the built-in pass-compositing program is held under. */
+const PRESENT_KEY = '\u0000present';
+
+/** The key a pass's program is held under, kept distinct per shader. */
+export function passProgramKey(shaderId: string, passName: string): string {
+  return `${shaderId}#${passName}`;
+}
 
 export interface CompiledProgram {
   readonly shaderId: string;
   readonly program: GlProgram;
   /** Uniform locations, looked up once and reused every frame. */
   location: (name: string) => GlUniformLocation | null;
+}
+
+interface ProgramSources {
+  readonly vertexSource: string;
+  /** The shader's own fragment body, before the ABI wraps it. */
+  readonly fragmentSource: string;
+  readonly uniformDeclarations: string;
+  /** Set when this program belongs to a named pass, for the diagnostic. */
+  readonly passName?: string;
 }
 
 export type CompileResult =
@@ -50,37 +72,85 @@ export class ProgramCache {
    * recompiling, so one broken shader costs one compile, not one per frame.
    */
   acquire(manifest: ShaderManifest): CompileResult {
-    const cached = this.programs.get(manifest.id);
+    return this.acquireKeyed(manifest.id, manifest.id, {
+      vertexSource: manifest.vertexSource ?? QUAD_VERTEX_SOURCE,
+      fragmentSource: manifest.fragmentSource,
+      uniformDeclarations: this.declarationsFor(manifest),
+    });
+  }
+
+  /**
+   * The program for one of a shader's passes. Each pass is its own program:
+   * they share the shader's parameters and state, but not their fragment code.
+   */
+  acquirePass(manifest: ShaderManifest, pass: ShaderPass): CompileResult {
+    const samplers = (pass.reads ?? [])
+      .map((input) => `uniform sampler2D ${input.uniform};`)
+      .join('\n');
+
+    return this.acquireKeyed(passProgramKey(manifest.id, pass.name), manifest.id, {
+      vertexSource: manifest.vertexSource ?? QUAD_VERTEX_SOURCE,
+      fragmentSource: pass.fragmentSource,
+      uniformDeclarations: [this.declarationsFor(manifest), samplers]
+        .filter((part) => part !== '')
+        .join('\n'),
+      passName: pass.name,
+    });
+  }
+
+  /**
+   * The built-in program that draws a finished pass onto the object. Only a
+   * shader whose last pass is itself read needs it, since every other
+   * multi-pass shader ends by drawing straight to the canvas.
+   */
+  acquirePresent(): CompileResult {
+    return this.acquireKeyed(PRESENT_KEY, PRESENT_KEY, {
+      vertexSource: QUAD_VERTEX_SOURCE,
+      fragmentSource: PRESENT_FRAGMENT_SOURCE,
+      uniformDeclarations: `uniform sampler2D ${PRESENT_SOURCE_UNIFORM};`,
+    });
+  }
+
+  /**
+   * State binds through the same uniforms parameters do, so it is declared the
+   * same way — a shader author writes neither by hand.
+   */
+  private declarationsFor(manifest: ShaderManifest): string {
+    return declareUniforms([...manifest.parameters, ...(manifest.simulation?.schema ?? [])]);
+  }
+
+  private acquireKeyed(key: string, shaderId: string, sources: ProgramSources): CompileResult {
+    const cached = this.programs.get(key);
     if (cached) return { ok: true, compiled: cached };
 
-    const recorded = this.failures.get(manifest.id);
+    const recorded = this.failures.get(key);
     if (recorded) return { ok: false, failure: recorded };
 
-    const result = this.compile(manifest);
+    const result = this.compile(shaderId, sources);
     if (result.ok) {
-      this.programs.set(manifest.id, result.compiled);
+      this.programs.set(key, result.compiled);
     } else {
-      this.failures.set(manifest.id, result.failure);
+      this.failures.set(key, result.failure);
     }
     return result;
   }
 
-  private compile(manifest: ShaderManifest): CompileResult {
+  private compile(shaderId: string, sources: ProgramSources): CompileResult {
     const { gl } = this;
     this.compileCount += 1;
 
+    // A pass failure names the pass: "this shader is broken" is not enough to
+    // find the fault when a shader has several programs.
+    const where = sources.passName === undefined ? '' : `Pass "${sources.passName}": `;
     const fail = (stage: ShaderCompileFailure['stage'], diagnostic: string): CompileResult => ({
       ok: false,
-      failure: { shaderId: manifest.id, stage, diagnostic },
+      failure: { shaderId, stage, diagnostic: `${where}${diagnostic}` },
     });
 
-    const vertexSource = manifest.vertexSource ?? QUAD_VERTEX_SOURCE;
+    const { vertexSource } = sources;
     let fragmentSource: string;
     try {
-      fragmentSource = composeFragmentSource(
-        manifest.fragmentSource,
-        declareUniforms(manifest.parameters),
-      );
+      fragmentSource = composeFragmentSource(sources.fragmentSource, sources.uniformDeclarations);
     } catch (error) {
       return fail('fragment', error instanceof Error ? error.message : String(error));
     }
@@ -117,7 +187,7 @@ export class ProgramCache {
 
     const locations = new Map<string, GlUniformLocation | null>();
     const compiled: CompiledProgram = {
-      shaderId: manifest.id,
+      shaderId,
       program,
       location: (name) => {
         if (!locations.has(name)) {
@@ -157,14 +227,18 @@ export class ProgramCache {
     return { ok: true, shader };
   }
 
-  /** Releases the program held for a shader, if any. */
+  /** Releases every program held for a shader — its own and its passes'. */
   release(shaderId: string): void {
-    const compiled = this.programs.get(shaderId);
-    if (compiled) {
-      this.gl.deleteProgram(compiled.program);
-      this.programs.delete(shaderId);
+    const prefix = `${shaderId}#`;
+    for (const key of [...this.programs.keys()]) {
+      if (key !== shaderId && !key.startsWith(prefix)) continue;
+      const compiled = this.programs.get(key);
+      if (compiled) this.gl.deleteProgram(compiled.program);
+      this.programs.delete(key);
     }
-    this.failures.delete(shaderId);
+    for (const key of [...this.failures.keys()]) {
+      if (key === shaderId || key.startsWith(prefix)) this.failures.delete(key);
+    }
   }
 
   /** Releases every program. Used on teardown and on context loss. */

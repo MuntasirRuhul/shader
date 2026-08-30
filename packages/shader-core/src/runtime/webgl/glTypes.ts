@@ -20,6 +20,9 @@ export interface GlTexture {
 export interface GlVertexArray {
   readonly __vao?: unique symbol;
 }
+export interface GlFramebuffer {
+  readonly __framebuffer?: unique symbol;
+}
 
 /** The WebGL2 constants and calls the runtime depends on. */
 export interface GlContext {
@@ -44,6 +47,9 @@ export interface GlContext {
   readonly TEXTURE_WRAP_S: number;
   readonly TEXTURE_WRAP_T: number;
   readonly UNPACK_FLIP_Y_WEBGL: number;
+  readonly RGBA8: number;
+  readonly FRAMEBUFFER: number;
+  readonly COLOR_ATTACHMENT0: number;
 
   createShader: (type: number) => GlShader | null;
   shaderSource: (shader: GlShader, source: string) => void;
@@ -92,11 +98,32 @@ export interface GlContext {
     source: TexImageSource,
   ) => void;
   pixelStorei: (pname: number, param: number | boolean) => void;
+  /** Allocates a texture's storage without uploading anything, for a target. */
+  texStorage2D: (
+    target: number,
+    levels: number,
+    internalFormat: number,
+    width: number,
+    height: number,
+  ) => void;
+
+  createFramebuffer: () => GlFramebuffer | null;
+  /** Passing `null` returns drawing to the canvas. */
+  bindFramebuffer: (target: number, framebuffer: GlFramebuffer | null) => void;
+  framebufferTexture2D: (
+    target: number,
+    attachment: number,
+    textarget: number,
+    texture: GlTexture | null,
+    level: number,
+  ) => void;
+  deleteFramebuffer: (framebuffer: GlFramebuffer | null) => void;
 
   viewport: (x: number, y: number, width: number, height: number) => void;
   clearColor: (r: number, g: number, b: number, a: number) => void;
   clear: (mask: number) => void;
   enable: (cap: number) => void;
+  disable: (cap: number) => void;
   blendFuncSeparate: (srcRgb: number, dstRgb: number, srcAlpha: number, dstAlpha: number) => void;
   drawArrays: (mode: number, first: number, count: number) => void;
 

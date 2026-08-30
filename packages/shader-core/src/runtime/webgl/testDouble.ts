@@ -1,5 +1,6 @@
 import type {
   GlContext,
+  GlFramebuffer,
   GlProgram,
   GlShader,
   GlTexture,
@@ -15,6 +16,15 @@ import type {
  * so that behaviour — what got compiled, what got bound, what got deleted — can
  * be asserted exactly, headlessly.
  */
+
+/** One draw, with the state that produced it. */
+export interface DrawRecord {
+  /** The framebuffer it landed in; `null` is the canvas. */
+  readonly target: GlFramebuffer | null;
+  readonly viewport: { readonly width: number; readonly height: number };
+  /** What was bound to each texture unit at the time. */
+  readonly textures: ReadonlyMap<number, GlTexture | null>;
+}
 
 export interface UniformWrite {
   readonly name: string;
@@ -52,11 +62,24 @@ export class FakeGl implements GlContext {
   readonly TEXTURE_WRAP_S = 0x2802;
   readonly TEXTURE_WRAP_T = 0x2803;
   readonly UNPACK_FLIP_Y_WEBGL = 0x9240;
+  readonly RGBA8 = 0x8058;
+  readonly FRAMEBUFFER = 0x8d40;
+  readonly COLOR_ATTACHMENT0 = 0x8ce0;
 
   /** Every source passed to a shader stage, in order. */
   readonly compiledSources: string[] = [];
   readonly uniformWrites: UniformWrite[] = [];
   readonly drawCalls: { first: number; count: number }[] = [];
+  /**
+   * Every draw with the state that made it: where it landed, at what size, and
+   * what it sampled. A multi-pass shader is only observable through these.
+   */
+  readonly draws: DrawRecord[] = [];
+  readonly deletedFramebuffers: GlFramebuffer[] = [];
+  /** Storage allocations, in order, so target sizing can be asserted. */
+  readonly allocations: { texture: GlTexture; width: number; height: number }[] = [];
+  /** Framebuffers cleared, in order. */
+  readonly clears: (GlFramebuffer | null)[] = [];
   readonly deletedPrograms: GlProgram[] = [];
   readonly deletedTextures: GlTexture[] = [];
   readonly deletedShaders: GlShader[] = [];
@@ -66,7 +89,15 @@ export class FakeGl implements GlContext {
   livePrograms = 0;
   liveTextures = 0;
   liveVertexArrays = 0;
+  liveFramebuffers = 0;
   contextLost = false;
+
+  /** The framebuffer currently bound; `null` means the canvas. */
+  private boundFramebuffer: GlFramebuffer | null = null;
+  /** The texture bound to each unit, so a draw records what it sampled. */
+  private readonly boundTextures = new Map<number, GlTexture | null>();
+  private activeUnit = 0;
+  private readonly textureByFramebuffer = new Map<GlFramebuffer, GlTexture | null>();
 
   private readonly sourceByShader = new Map<GlShader, string>();
   private readonly locationsByName = new Map<string, GlUniformLocation>();
@@ -86,6 +117,14 @@ export class FakeGl implements GlContext {
   reset(): void {
     this.uniformWrites.length = 0;
     this.drawCalls.length = 0;
+    this.draws.length = 0;
+    this.clears.length = 0;
+    this.allocations.length = 0;
+  }
+
+  /** The colour texture attached to a framebuffer, for asserting a pass read. */
+  textureOf(framebuffer: GlFramebuffer): GlTexture | null {
+    return this.textureByFramebuffer.get(framebuffer) ?? null;
   }
 
   createShader(): GlShader | null {
@@ -202,25 +241,78 @@ export class FakeGl implements GlContext {
     this.liveTextures += 1;
     return {};
   }
-  bindTexture(): void {}
+  bindTexture(_target: number, texture: GlTexture | null): void {
+    this.boundTextures.set(this.activeUnit, texture);
+  }
   deleteTexture(texture: GlTexture | null): void {
     if (!texture) return;
     this.deletedTextures.push(texture);
     this.liveTextures -= 1;
   }
-  activeTexture(): void {}
+  activeTexture(unit: number): void {
+    this.activeUnit = unit - this.TEXTURE0;
+  }
   texParameteri(): void {}
   texImage2D(): void {}
   pixelStorei(): void {}
 
-  viewport(): void {}
+  texStorage2D(
+    _target: number,
+    _levels: number,
+    _internalFormat: number,
+    width: number,
+    height: number,
+  ): void {
+    const texture = this.boundTextures.get(this.activeUnit) ?? null;
+    if (texture) this.allocations.push({ texture, width, height });
+  }
+
+  createFramebuffer(): GlFramebuffer | null {
+    this.liveFramebuffers += 1;
+    return {};
+  }
+
+  bindFramebuffer(_target: number, framebuffer: GlFramebuffer | null): void {
+    this.boundFramebuffer = framebuffer;
+  }
+
+  framebufferTexture2D(
+    _target: number,
+    _attachment: number,
+    _textarget: number,
+    texture: GlTexture | null,
+    _level: number,
+  ): void {
+    if (this.boundFramebuffer) this.textureByFramebuffer.set(this.boundFramebuffer, texture);
+  }
+
+  deleteFramebuffer(framebuffer: GlFramebuffer | null): void {
+    if (!framebuffer) return;
+    this.deletedFramebuffers.push(framebuffer);
+    this.textureByFramebuffer.delete(framebuffer);
+    this.liveFramebuffers -= 1;
+  }
+
+  private currentViewport = { width: 0, height: 0 };
+
+  viewport(_x: number, _y: number, width: number, height: number): void {
+    this.currentViewport = { width, height };
+  }
   clearColor(): void {}
-  clear(): void {}
+  clear(): void {
+    this.clears.push(this.boundFramebuffer);
+  }
   enable(): void {}
+  disable(): void {}
   blendFuncSeparate(): void {}
 
   drawArrays(_mode: number, first: number, count: number): void {
     this.drawCalls.push({ first, count });
+    this.draws.push({
+      target: this.boundFramebuffer,
+      viewport: { ...this.currentViewport },
+      textures: new Map(this.boundTextures),
+    });
   }
 
   isContextLost(): boolean {
