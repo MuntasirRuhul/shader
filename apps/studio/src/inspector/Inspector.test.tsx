@@ -8,7 +8,7 @@ import {
   solidFill,
   type ShaderManifest,
 } from '@shader/core';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useEditorStore } from '../store/editorStore';
@@ -464,5 +464,76 @@ describe('a slider drag is one edit', () => {
     await user.keyboard('{ArrowRight}');
 
     expect(useEditorStore.getState().history.past.length).toBe(before + 1);
+  });
+});
+
+describe('controls follow a drag in progress', () => {
+  beforeEach(seedWithShader);
+
+  /*
+   * A controlled slider draws its thumb from the value it is given. Values
+   * mid-drag live only in the transient channel, so if the panel rendered
+   * from the document alone the thumb would snap back on every pointer move
+   * and the drag would do nothing at all.
+   */
+  it('shows a value the drag has published but not committed', async () => {
+    renderInspector();
+    expect(screen.getByRole('slider', { name: 'Intensity' })).toHaveAttribute(
+      'aria-valuenow',
+      '0.5',
+    );
+
+    act(() => {
+      transientChannel.begin();
+      transientChannel.push({ objectId: 'a', key: 'intensity', value: 0.9 });
+    });
+
+    expect(await screen.findByRole('slider', { name: 'Intensity' })).toHaveAttribute(
+      'aria-valuenow',
+      '0.9',
+    );
+  });
+
+  it('leaves the document untouched while the drag is in progress', () => {
+    renderInspector();
+
+    act(() => {
+      transientChannel.begin();
+      transientChannel.push({ objectId: 'a', key: 'intensity', value: 0.9 });
+    });
+
+    expect(shaderValues().intensity).toBeUndefined();
+  });
+
+  it('falls back to the document once the drag ends', async () => {
+    renderInspector();
+
+    act(() => {
+      transientChannel.begin();
+      transientChannel.push({ objectId: 'a', key: 'intensity', value: 0.9 });
+    });
+    act(() => {
+      transientChannel.end();
+    });
+
+    // Nothing was committed, so the control returns to the stored value.
+    expect(await screen.findByRole('slider', { name: 'Intensity' })).toHaveAttribute(
+      'aria-valuenow',
+      '0.5',
+    );
+  });
+
+  it('ignores values published for a different object', () => {
+    renderInspector();
+
+    act(() => {
+      transientChannel.begin();
+      transientChannel.push({ objectId: 'somewhere-else', key: 'intensity', value: 0.9 });
+    });
+
+    expect(screen.getByRole('slider', { name: 'Intensity' })).toHaveAttribute(
+      'aria-valuenow',
+      '0.5',
+    );
   });
 });

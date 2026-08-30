@@ -15,6 +15,7 @@ import { useEditorStore } from '../store/editorStore';
 import { transientChannel } from '../store/transientChannel';
 import styles from './Inspector.module.css';
 import { ShaderParameters } from './ShaderParameters';
+import { useTransientValues } from './useTransientValues';
 
 export interface InspectorProps {
   readonly registry: Pick<ShaderRegistry, 'get'>;
@@ -108,6 +109,7 @@ function ShaderPanel({
   readonly registry: Pick<ShaderRegistry, 'get'>;
 }) {
   const document = useEditorStore((state) => state.document);
+  const pending = useTransientValues(objectId);
   const object = document.objects.find((candidate) => candidate.id === objectId);
   if (!object || !isShaderFill(object.fill)) return null;
 
@@ -137,10 +139,10 @@ function ShaderPanel({
 
   /** The end of a change: everything the drag produced becomes one edit. */
   const commit = (name: string, value: ParameterValue) => {
-    const pending = transientChannel.isDragging ? transientChannel.end() : [];
+    const drag = transientChannel.isDragging ? transientChannel.end() : [];
 
     const values: Record<string, ParameterValue> = {};
-    for (const edit of pending) {
+    for (const edit of drag) {
       if (edit.objectId === objectId) values[edit.key] = edit.value as ParameterValue;
     }
     values[name] = value;
@@ -163,7 +165,7 @@ function ShaderPanel({
           .getState()
           .applyPreset(objectId, defaultValues(manifest.parameters), 'default');
       }}
-      values={fill.values}
+      values={{ ...fill.values, ...pending }}
       {...(fill.presetId === undefined ? {} : { presetId: fill.presetId })}
     />
   );

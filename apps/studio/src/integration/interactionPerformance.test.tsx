@@ -8,9 +8,14 @@ import { transientChannel } from '../store/transientChannel';
  * What makes a drag smooth.
  *
  * The claim the design rests on is that intermediate values reach the
- * renderer without going through React or the store. These tests measure
- * that directly: a drag publishing many values must not re-render a
- * store-subscribed component, and must leave exactly one entry in history.
+ * renderer without going through the store. These tests measure that
+ * directly: a drag publishing many values must not touch the document, must
+ * not re-render anything subscribed to it, and must leave exactly one entry
+ * in history.
+ *
+ * The inspector itself does re-render during a drag — a controlled slider
+ * cannot move its thumb otherwise — but that is a handful of small controls,
+ * not the frame path. The canvas is fed straight from the channel.
  */
 
 /** A component that counts how often React re-rendered it. */
