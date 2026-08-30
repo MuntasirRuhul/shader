@@ -38,6 +38,12 @@ export function buildScene(document: CanvasDocument, options: SceneOptions = {})
   for (const object of document.objects) {
     if (!object.visible) continue;
 
+    // A text object is its glyphs. With no text there are no glyphs, and
+    // drawing it anyway fills its whole box with the shader — which is what a
+    // newly created text object used to look like: a solid slab with a caret
+    // in it.
+    if (object.type === 'text' && object.text.trim() === '') continue;
+
     const mask = options.maskFor?.(object);
     const shaderId = isShaderFill(object.fill) ? object.fill.shaderId : SOLID_FILL_SHADER_ID;
     const values = isShaderFill(object.fill) ? object.fill.values : { color: object.fill.color };

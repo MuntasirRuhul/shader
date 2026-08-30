@@ -180,14 +180,23 @@ export function createEllipse(overrides: Partial<EllipseObject> = {}): EllipseOb
 
 export function createText(overrides: Partial<TextObject> = {}): TextObject {
   const text = overrides.text ?? '';
+  const settings = { ...DEFAULT_TEXT_SETTINGS, ...overrides.textSettings };
+
   return {
-    ...baseDefaults({ width: 400, height: 120, ...overrides }),
+    // One line, which is what an empty text object is. The application fits
+    // the box to the words once there are some; starting it at an arbitrary
+    // rectangle only means a caret adrift in a large empty box.
+    ...baseDefaults({
+      width: settings.fontSize * 8,
+      height: Math.round(settings.fontSize * settings.lineHeight),
+      ...overrides,
+    }),
     id: overrides.id ?? nextObjectId('text'),
     // A text object's name follows its content, so the layer list stays legible.
     name: overrides.name ?? (text === '' ? 'Text' : text.slice(0, 40)),
     type: 'text',
     text,
-    textSettings: { ...DEFAULT_TEXT_SETTINGS, ...overrides.textSettings },
+    textSettings: settings,
   };
 }
 

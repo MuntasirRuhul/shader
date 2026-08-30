@@ -5,6 +5,7 @@ import styles from './CanvasStage.module.css';
 import { groundStyle } from './ground';
 import { SelectionOverlay } from './SelectionOverlay';
 import { TextEditor } from './TextEditor';
+import { fitTextBox } from './textRasterizer';
 import { useCanvasPointer } from './useCanvasPointer';
 import { useCanvasShortcuts } from './useCanvasShortcuts';
 import { useShaderCanvas } from './useShaderCanvas';
@@ -85,7 +86,20 @@ export function CanvasStage({ registry, onCompileFailure }: CanvasStageProps) {
               return;
             }
 
-            state.updateObject(objectId, { text, name: text.slice(0, 40) }, 'Edit text');
+            const found = state.document.objects.find((candidate) => candidate.id === objectId);
+            // A box that does not fit its words is what makes text feel wrong.
+            // A new one takes the width of its content; one that already had
+            // text keeps the width it was given and grows only downward.
+            const box =
+              found?.type === 'text'
+                ? fitTextBox(text, found.textSettings, found.text === '' ? undefined : found.width)
+                : undefined;
+
+            state.updateObject(
+              objectId,
+              { text, name: text.slice(0, 40), ...(box ?? {}) },
+              'Edit text',
+            );
           }}
           viewport={viewport}
         />

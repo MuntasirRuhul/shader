@@ -2,6 +2,7 @@ import { isTextObject, type CanvasDocument } from '@shader/core';
 import { useEffect, useRef, useState } from 'react';
 import type { ViewportState } from '../store/slices';
 import styles from './TextEditor.module.css';
+import { fitTextBox } from './textRasterizer';
 import { canvasRectToScreen } from './viewport';
 
 export interface TextEditorProps {
@@ -34,11 +35,16 @@ export function TextEditor({ document, editingId, viewport, onCommit, onCancel }
 
   if (!object || !isTextObject(object)) return null;
 
+  const type = object.textSettings;
+  // The box follows what is being typed, so the editor is the shape the object
+  // will take rather than a fixed rectangle it has to be squeezed into. A box
+  // sized by hand keeps its width; only the height follows the words.
+  const box = fitTextBox(value, type, object.text === '' ? undefined : object.width);
+
   const screen = canvasRectToScreen(
-    { x: object.x, y: object.y, width: object.width, height: object.height },
+    { x: object.x, y: object.y, width: box.width, height: box.height },
     viewport,
   );
-  const type = object.textSettings;
 
   return (
     <textarea
