@@ -96,10 +96,10 @@ export class ImageCache {
     const entry: Entry = { revision: 0, source: object.source, failed: false };
     this.entries.set(object.id, entry);
 
+    // A `data:` URI carries its own bytes, so there is no origin to negotiate
+    // and nothing to taint a canvas with. Asking for CORS anyway makes some
+    // engines refuse the load outright.
     const image = new Image();
-    // A data URI is same-origin, but a decoded picture drawn to a canvas taints
-    // it otherwise, and rasterizing a vector needs an untainted canvas.
-    image.crossOrigin = 'anonymous';
     image.decoding = 'async';
 
     image.onload = () => {

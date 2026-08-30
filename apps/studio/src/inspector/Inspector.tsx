@@ -61,7 +61,47 @@ export function Inspector({ registry, defaultShaderId }: InspectorProps) {
           </div>
         )}
 
-        {object && isSolidFill(object.fill) && (
+        {object?.type === 'image' && (
+          <div className={styles.state}>
+            <h2 className={styles.stateTitle}>Image</h2>
+            <p className={styles.stateBody}>{object.name}</p>
+            <p className={styles.stateBody}>
+              {object.naturalWidth} × {object.naturalHeight}
+              {object.mediaType === 'image/svg+xml' ? ' vector' : ''}
+            </p>
+            {defaultShaderId !== undefined && isSolidFill(object.fill) && (
+              <Button
+                onClick={() => {
+                  const manifest = registry.get(defaultShaderId);
+                  if (!manifest) return;
+                  useEditorStore
+                    .getState()
+                    .setFill(
+                      object.id,
+                      shaderFill(manifest.id, resolvePreset(manifest), manifest.presets[0]?.id),
+                    );
+                }}
+                size="sm"
+              >
+                Put a shader over it
+              </Button>
+            )}
+            {isShaderFill(object.fill) && (
+              <Button
+                onClick={() => {
+                  // Back to the picture itself, which is what an image object
+                  // draws when nothing has been put over it.
+                  useEditorStore.getState().setFill(object.id, solidFill('#000000'));
+                }}
+                size="sm"
+              >
+                Show the picture again
+              </Button>
+            )}
+          </div>
+        )}
+
+        {object && object.type !== 'image' && isSolidFill(object.fill) && (
           <div className={styles.state}>
             <h2 className={styles.stateTitle}>Solid fill</h2>
             <ColorField

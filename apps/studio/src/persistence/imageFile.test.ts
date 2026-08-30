@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   createDocument,
   createImage,
@@ -169,5 +172,21 @@ describe('an image object on the canvas', () => {
 
     expect(item).toBeDefined();
     expect(item?.image).toBeUndefined();
+  });
+});
+
+describe('the canvas is actually told about pictures', () => {
+  // buildScene only supplies an image when its caller passes `imageFor`. That
+  // wiring is the one part no unit test reaches — the hook that does it needs a
+  // graphics context — and when it was silently missing, every import produced
+  // an object that drew nothing at all.
+  it('the canvas hook supplies both a mask and an image to the scene', () => {
+    const source = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '..', 'canvas', 'useShaderCanvas.ts'),
+      'utf8',
+    );
+
+    expect(source).toMatch(/maskFor:/);
+    expect(source).toMatch(/imageFor:/);
   });
 });

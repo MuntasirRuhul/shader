@@ -92,15 +92,22 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
   /** The scene for the current document, with text masks and any live drag. */
   const sceneFor = useCallback((document: CanvasDocument) => {
     const masks = masksRef.current;
+    const images = imagesRef.current;
     const ratio = typeof window === 'undefined' ? 1 : window.devicePixelRatio;
 
     const scene = buildScene(document, {
       maskFor: (object) =>
         object.type === 'text' ? masks.maskFor(object, viewportRef.current.zoom, ratio) : undefined,
+      imageFor: (object) =>
+        object.type === 'image'
+          ? images.sourceFor(object, viewportRef.current.zoom, ratio)
+          : undefined,
     });
 
-    // Drop masks for objects the scene no longer contains.
-    masks.retainOnly(document.objects.map((object) => object.id));
+    // Drop what belongs to objects the scene no longer contains.
+    const live = document.objects.map((object) => object.id);
+    masks.retainOnly(live);
+    images.retainOnly(live);
 
     const pending = transientRef.current;
     if (pending.length === 0) return scene;

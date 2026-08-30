@@ -13,6 +13,13 @@
 }
 
 .swatch {
+  /*
+   * A span is inline, and width and height do not apply to one — so without
+   * this the swatch collapsed to its borders and showed as a hairline rather
+   * than as the colour. The wrapper escapes it by being a flex item; its child
+   * does not.
+   */
+  display: block;
   width: 100%;
   height: 100%;
   border: 1px solid var(--sb-border-strong);
