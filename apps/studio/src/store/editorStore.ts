@@ -1,7 +1,13 @@
 import {
   addObject,
+  childrenOf,
   createDocument,
+  createFrame,
+  DEFAULT_FILL,
+  descendantsOf,
+  groupObjects,
   removeObjects,
+  ungroupObject,
   updateObject,
   type CanvasDocument,
   type CanvasObject,
@@ -57,6 +63,10 @@ export interface EditorState {
   readonly addObject: (object: CanvasObject) => void;
   readonly updateObject: (objectId: string, changes: ObjectChanges, label?: string) => void;
   readonly deleteSelected: () => void;
+  /** Puts the selection into one container, and selects it. */
+  readonly groupSelection: () => void;
+  /** Dissolves the selected containers, selecting what they held. */
+  readonly ungroupSelection: () => void;
   readonly setFill: (objectId: string, fill: Fill) => void;
   readonly setShaderValues: (objectId: string, values: ParameterValues) => void;
   readonly applyPreset: (objectId: string, values: ParameterValues, presetId: string) => void;
@@ -123,7 +133,43 @@ export const createEditorStore = (initialDocument: CanvasDocument = createDocume
       deleteSelected: () => {
         const { selection } = get();
         if (selection.length === 0) return;
-        runEdit('Delete', (document) => removeObjects(document, selection));
+        // What a container holds goes with it; leaving orphans behind would
+        // leave objects nobody can reach.
+        const withContents = new Set(selection);
+        for (const objectId of selection) {
+          for (const child of descendantsOf(get().document, objectId)) withContents.add(child.id);
+        }
+        runEdit('Delete', (document) => removeObjects(document, [...withContents]));
+      },
+
+      groupSelection: () => {
+        const { selection, document } = get();
+        if (selection.length < 2) return;
+
+        const frame = createFrame({ name: 'Group', clipsContent: false, fill: DEFAULT_FILL });
+        const grouped = groupObjects(document, selection, frame);
+        // Refused, because the members do not share a container.
+        if (grouped === document) return;
+
+        runEdit('Group', () => grouped);
+        set({ selection: [frame.id] });
+      },
+
+      ungroupSelection: () => {
+        const { selection, document } = get();
+        const containers = document.objects.filter(
+          (object) => selection.includes(object.id) && object.type === 'frame',
+        );
+        if (containers.length === 0) return;
+
+        const released = containers.flatMap((container) =>
+          childrenOf(document, container.id).map((child) => child.id),
+        );
+
+        runEdit('Ungroup', (current) =>
+          containers.reduce((next, container) => ungroupObject(next, container.id), current),
+        );
+        set({ selection: released });
       },
 
       setFill: (objectId, fill) => {

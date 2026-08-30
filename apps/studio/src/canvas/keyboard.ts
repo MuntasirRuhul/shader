@@ -107,7 +107,9 @@ export type CanvasCommand =
   | { readonly kind: 'zoom-to-fit' }
   | { readonly kind: 'zoom-to-selection' }
   | { readonly kind: 'zoom-reset' }
-  | { readonly kind: 'toggle-chrome' };
+  | { readonly kind: 'toggle-chrome' }
+  | { readonly kind: 'group' }
+  | { readonly kind: 'ungroup' };
 
 export interface KeyContext {
   readonly key: string;
@@ -138,6 +140,7 @@ export function commandFor(event: KeyContext): CanvasCommand | null {
     const key = event.key.toLowerCase();
     if (key === 'z') return event.shiftKey ? { kind: 'redo' } : { kind: 'undo' };
     if (key === 'y') return { kind: 'redo' };
+    if (key === 'g') return event.shiftKey ? { kind: 'ungroup' } : { kind: 'group' };
     return null;
   }
 

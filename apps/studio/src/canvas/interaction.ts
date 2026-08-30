@@ -1,5 +1,7 @@
 import {
+  absolutePlacement,
   boundsOf,
+  outermostOf,
   objectAt,
   objectsWithin,
   rectFromPoints,
@@ -119,7 +121,12 @@ export function onPointerDown(context: PointerDownContext): PointerDownResult {
     }
   }
 
-  const target = objectAt(document, point);
+  const hit = objectAt(document, point);
+  // Clicking what a group holds selects the group. Reaching the thing itself
+  // is a deliberate second act, not something a stray click does.
+  const target = hit
+    ? (document.objects.find((object) => object.id === outermostOf(document, hit.id)) ?? hit)
+    : undefined;
 
   if (!target) {
     // Empty canvas: begin a marquee, and clear unless adding to a selection.
@@ -242,7 +249,14 @@ export function panOffset(gesture: Gesture): Point {
 /** The bounds indicator drawn for the current selection. */
 export function selectionBounds(document: CanvasDocument, selection: Selection): Rect | undefined {
   const chosen = new Set(selection);
-  return unionBounds(document.objects.filter((object) => chosen.has(object.id)));
+  // Placed absolutely: a selected object inside a container stores its
+  // position against that container, which says nothing about where the
+  // indicator belongs on screen.
+  return unionBounds(
+    document.objects
+      .filter((object) => chosen.has(object.id))
+      .map((object) => ({ ...object, ...absolutePlacement(document, object) })),
+  );
 }
 
 /**
@@ -312,7 +326,11 @@ export function previewBounds(
   return unionBounds(
     document.objects
       .filter((object) => chosen.has(object.id))
-      .map((object) => ({ ...object, ...byId.get(object.id) })),
+      .map((object) => ({
+        ...object,
+        ...absolutePlacement(document, object),
+        ...byId.get(object.id),
+      })),
   );
 }
 

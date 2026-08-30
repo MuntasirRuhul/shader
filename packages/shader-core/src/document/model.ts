@@ -10,7 +10,7 @@ import { DEFAULT_BLEND_MODE, type BlendMode } from './blendMode';
  * without a graphics context.
  */
 
-export const OBJECT_TYPES = ['rectangle', 'ellipse', 'text', 'image'] as const;
+export const OBJECT_TYPES = ['rectangle', 'ellipse', 'text', 'image', 'frame'] as const;
 export type CanvasObjectType = (typeof OBJECT_TYPES)[number];
 
 export function isCanvasObjectType(value: unknown): value is CanvasObjectType {
@@ -81,6 +81,30 @@ interface BaseObject {
   readonly fill: Fill;
   /** How this object's colour combines with what is beneath it. */
   readonly blendMode: BlendMode;
+  /**
+   * The container this object sits in, or `null` at the top level.
+   *
+   * Held as a link on a flat list rather than as nested arrays. The list stays
+   * the stacking order, every operation that finds an object by identity keeps
+   * working unchanged, and a document written before containers existed still
+   * loads — the field is simply absent. What it costs is an invariant to
+   * maintain: a container's descendants sit immediately after it in the list.
+   */
+  readonly parentId: string | null;
+}
+
+/**
+ * A container for other objects.
+ *
+ * One type serves both of the things design tools usually separate. A frame
+ * clips what it holds and carries a fill of its own; a group is the same thing
+ * with neither. Two types would have meant two of everything — hit-testing,
+ * transforms, serialization — to express one idea.
+ */
+export interface FrameObject extends BaseObject {
+  readonly type: 'frame';
+  /** Whether what it holds is cut off at its edges. A group does not clip. */
+  readonly clipsContent: boolean;
 }
 
 export interface RectangleObject extends BaseObject {
@@ -117,7 +141,7 @@ export interface ImageObject extends BaseObject {
   readonly naturalHeight: number;
 }
 
-export type CanvasObject = RectangleObject | EllipseObject | TextObject | ImageObject;
+export type CanvasObject = RectangleObject | EllipseObject | TextObject | ImageObject | FrameObject;
 
 export function isTextObject(object: CanvasObject): object is TextObject {
   return object.type === 'text';
@@ -125,6 +149,10 @@ export function isTextObject(object: CanvasObject): object is TextObject {
 
 export function isImageObject(object: CanvasObject): object is ImageObject {
   return object.type === 'image';
+}
+
+export function isFrameObject(object: CanvasObject): object is FrameObject {
+  return object.type === 'frame';
 }
 
 /** Whether a source is vector, and so worth rasterizing again as it is magnified. */
@@ -187,6 +215,7 @@ function baseDefaults(overrides: Partial<BaseObject>): ObjectDefaults {
     locked: false,
     fill: DEFAULT_FILL,
     blendMode: DEFAULT_BLEND_MODE,
+    parentId: null,
     ...overrides,
   };
 }
@@ -262,6 +291,22 @@ export function createImage(
     mediaType,
     naturalWidth,
     naturalHeight,
+  };
+}
+
+/**
+ * A container over a region.
+ *
+ * `clipsContent` is what separates a frame from a group: a frame is a window
+ * onto what it holds, a group is only a handle on several things at once.
+ */
+export function createFrame(overrides: Partial<FrameObject> = {}): FrameObject {
+  return {
+    ...baseDefaults({ width: 400, height: 300, ...overrides }),
+    id: overrides.id ?? nextObjectId('frame'),
+    name: overrides.name ?? 'Frame',
+    type: 'frame',
+    clipsContent: overrides.clipsContent ?? true,
   };
 }
 

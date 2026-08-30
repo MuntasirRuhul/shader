@@ -107,6 +107,14 @@ export function useCanvasShortcuts(store: () => EditorState, options: ShortcutOp
         case 'toggle-chrome':
           options.onToggleChrome?.();
           break;
+
+        case 'group':
+          state.groupSelection();
+          break;
+
+        case 'ungroup':
+          state.ungroupSelection();
+          break;
       }
 
       event.preventDefault();

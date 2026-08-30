@@ -1,4 +1,6 @@
 import {
+  absolutePlacement,
+  ancestorsOf,
   IMAGE_FILL_SHADER_ID,
   isShaderFill,
   POINTER_ABSENT,
@@ -47,6 +49,14 @@ export function buildScene(document: CanvasDocument, options: SceneOptions = {})
     // in it.
     if (object.type === 'text' && object.text.trim() === '') continue;
 
+    // A container is a place to put things, not a thing to draw. One with a
+    // fill of its own would be, but that is a frame's fill and not the group
+    // handle a group is.
+    if (object.type === 'frame' && !isShaderFill(object.fill)) continue;
+
+    // An object inside a hidden container is hidden with it.
+    if (ancestorsOf(document, object.id).some((parent) => !parent.visible)) continue;
+
     const mask = options.maskFor?.(object);
     const image = options.imageFor?.(object);
 
@@ -61,13 +71,8 @@ export function buildScene(document: CanvasDocument, options: SceneOptions = {})
       shaderId,
       values,
       pointer: pointerOver(object, options.pointer),
-      transform: {
-        x: object.x,
-        y: object.y,
-        width: object.width,
-        height: object.height,
-        rotation: object.rotation,
-      },
+      // Where it actually sits, with every container above it composed in.
+      transform: absolutePlacement(document, object),
       opacity: object.opacity,
       blendMode: object.blendMode,
       ...(mask === undefined ? {} : { mask }),

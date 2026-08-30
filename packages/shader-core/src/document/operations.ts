@@ -1,5 +1,7 @@
+import { unionBounds } from '../canvas/geometry';
 import type { ParameterValues } from '../registry/parameterSchema';
 import type { BlendMode } from './blendMode';
+import { inStackingOrder } from './containment';
 import {
   isShaderFill,
   nextObjectId,
@@ -219,4 +221,89 @@ export function referencedShaderIds(document: CanvasDocument): string[] {
     if (isShaderFill(object.fill)) ids.add(object.fill.shaderId);
   }
   return [...ids];
+}
+
+/**
+ * Puts several objects into one container.
+ *
+ * The container takes the bounds of what it holds, and each member is restated
+ * against that origin — a child's position is relative to its container, so
+ * the same drawing has to mean the same thing before and after. Members
+ * already inside another container keep it: grouping a selection that spans
+ * two containers would otherwise silently move things between them.
+ */
+export function groupObjects(
+  document: CanvasDocument,
+  objectIds: readonly string[],
+  frame: CanvasObject,
+): CanvasDocument {
+  const chosen = new Set(objectIds);
+  const members = document.objects.filter((object) => chosen.has(object.id));
+  if (members.length < 2) return document;
+
+  // One container, so the members must already share one.
+  const parents = new Set(members.map((object) => object.parentId));
+  if (parents.size > 1) return document;
+
+  const bounds = unionBounds(members);
+  if (!bounds) return document;
+
+  const container: CanvasObject = {
+    ...frame,
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height,
+    parentId: members[0]?.parentId ?? null,
+  };
+
+  const moved = document.objects.map((object) =>
+    chosen.has(object.id)
+      ? { ...object, parentId: container.id, x: object.x - bounds.x, y: object.y - bounds.y }
+      : object,
+  );
+
+  // Placed where the topmost member was, so the group sits where its contents
+  // sat in the stacking order.
+  const topmost = moved.reduce(
+    (highest, object, index) => (chosen.has(object.id) ? index : highest),
+    0,
+  );
+  const withContainer = [...moved];
+  withContainer.splice(topmost + 1, 0, container);
+
+  return { ...document, objects: inStackingOrder(withContainer) };
+}
+
+/**
+ * Dissolves a container, leaving what it held where it appears to be.
+ *
+ * Members are restated against whatever the container itself sat in, so
+ * nothing moves on screen. The container's own rotation is not carried over:
+ * a member would have to be turned about a point that no longer exists.
+ */
+export function ungroupObject(document: CanvasDocument, containerId: string): CanvasDocument {
+  const container = document.objects.find((object) => object.id === containerId);
+  if (!container) return document;
+
+  const members = document.objects.filter((object) => object.parentId === containerId);
+  if (members.length === 0) {
+    return { ...document, objects: document.objects.filter((object) => object.id !== containerId) };
+  }
+
+  const released = document.objects
+    .filter((object) => object.id !== containerId)
+    .map((object) =>
+      object.parentId === containerId
+        ? {
+            ...object,
+            parentId: container.parentId,
+            x: object.x + container.x,
+            y: object.y + container.y,
+            rotation: object.rotation + container.rotation,
+          }
+        : object,
+    );
+
+  return { ...document, objects: inStackingOrder(released) };
 }

@@ -96,8 +96,20 @@ export {
 } from './document/blendMode';
 
 export {
+  absolutePlacement,
+  ancestorsOf,
+  childrenOf,
+  descendantsOf,
+  inStackingOrder,
+  isWithin,
+  outermostOf,
+  rootObjects,
+} from './document/containment';
+
+export {
   createDocument,
   createEllipse,
+  createFrame,
   createImage,
   createRectangle,
   createText,
@@ -105,6 +117,7 @@ export {
   DEFAULT_TEXT_SETTINGS,
   DOCUMENT_VERSION,
   isCanvasObjectType,
+  isFrameObject,
   isImageObject,
   isShaderFill,
   isSolidFill,
@@ -120,6 +133,7 @@ export {
   type CanvasObjectType,
   type EllipseObject,
   type Fill,
+  type FrameObject,
   type ImageObject,
   type RectangleObject,
   type ShaderFill,
@@ -144,6 +158,8 @@ export {
   sendToBack,
   setFill,
   setShaderValues,
+  groupObjects,
+  ungroupObject,
   updateObject,
   visibleObjects,
   type ObjectChanges,
