@@ -1,17 +1,17 @@
 ## 1. Draw through a viewport
 
-- [ ] 1.1 Give the rendering port a viewport — a magnification and a translation — separate from the scene, defaulting to the identity view; verify a runtime given none draws exactly as it does today, by the existing runtime tests passing untouched
-- [ ] 1.2 Fold the viewport into the model matrix where it still runs in double precision; verify an object's drawn corners against hand-computed clip-space positions at a translated view, a magnified view, and both together
-- [ ] 1.3 Verify the view composes correctly with an object's own transform: a moved, resized, and rotated object lands where the same transform predicts at a magnified and translated view
-- [ ] 1.4 Verify a view change costs a redraw and not a scene rebuild, so panning does not re-examine the resources held for every object
-- [ ] 1.5 Verify the size reported to a shader stays the object's canvas size at every magnification, so magnifying enlarges what a shader drew rather than making it draw something else
-- [ ] 1.6 Verify the pointer an object's shader receives is still in that object's own coordinates at a moved view, and is reported absent when the pointer is outside the object
+- [x] 1.1 Give the rendering port a viewport — a magnification and a translation — separate from the scene, defaulting to the identity view; verify a runtime given none draws exactly as it does today, by the existing runtime tests passing untouched
+- [x] 1.2 Fold the viewport into the model matrix where it still runs in double precision; verify an object's drawn corners against hand-computed clip-space positions at a translated view, a magnified view, and both together
+- [x] 1.3 Verify the view composes correctly with an object's own transform: a moved, resized, and rotated object lands where the same transform predicts at a magnified and translated view
+- [x] 1.4 Verify a view change costs a redraw and not a scene rebuild, so panning does not re-examine the resources held for every object
+- [x] 1.5 Verify the size reported to a shader stays the object's canvas size at every magnification, so magnifying enlarges what a shader drew rather than making it draw something else
+- [x] 1.6 Verify the pointer an object's shader receives is still in that object's own coordinates at a moved view, and is reported absent when the pointer is outside the object
 
 ## 2. Hold precision near the viewer
 
-- [ ] 2.1 Verify an object a million canvas units from the origin, viewed at high magnification, lands within a fraction of a pixel of where it should, and that the same object near the origin is no more accurate
-- [ ] 2.2 Verify the drawn position holds still across frames while the view holds still, so a distant object does not jitter
-- [ ] 2.3 Verify a smooth pan through a distant region produces smoothly changing positions, with no step larger than the pan itself
+- [x] 2.1 Verify an object a million canvas units from the origin, viewed at high magnification, lands within a fraction of a pixel of where it should, and that the same object near the origin is no more accurate
+- [x] 2.2 Verify the drawn position holds still across frames while the view holds still, so a distant object does not jitter
+- [x] 2.3 Verify a smooth pan through a distant region produces smoothly changing positions, with no step larger than the pan itself
 
 ## 3. Supply the viewport from the application
 

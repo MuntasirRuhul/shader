@@ -51,10 +51,12 @@ export {
 } from './registry/ShaderRegistry';
 
 export {
+  IDENTITY_VIEWPORT,
   type RenderingPort,
   type RenderItem,
   type RenderScene,
   type RenderTransform,
+  type RenderViewport,
   type RuntimeObserver,
   type RuntimeStatus,
   type ShaderCompileFailure,

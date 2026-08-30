@@ -1,11 +1,19 @@
-import type { RenderTransform } from '../renderingPort';
+import { IDENTITY_VIEWPORT, type RenderTransform, type RenderViewport } from '../renderingPort';
 
 /**
- * Builds the matrix that maps the unit quad onto an object.
+ * Builds the matrix that maps the unit quad onto an object, as it is currently
+ * being looked at.
  *
  * The unit quad's corners are the object-local UV the fragment stage reads, so
  * this matrix is the whole reason a shader can be written in object space and
  * still land correctly under translation, scale, and rotation.
+ *
+ * The viewport is applied here, in double precision, rather than being handed
+ * to the vertex stage as a transform of its own. That is deliberate: an object
+ * far from the origin at high magnification produces enormous intermediates
+ * and a small clip-space result, and the large terms have to cancel before
+ * anything is narrowed to single precision. Done on the graphics side the
+ * cancellation happens in single precision and the object visibly jitters.
  *
  * Canvas pixels have y increasing downward; clip space has y increasing upward,
  * so the vertical axis is flipped here. A consequence worth naming: because y
@@ -17,15 +25,22 @@ export function buildModelMatrix(
   transform: RenderTransform,
   canvasWidth: number,
   canvasHeight: number,
+  viewport: RenderViewport = IDENTITY_VIEWPORT,
 ): Float32Array {
-  const { x, y, width, height, rotation } = transform;
+  const { x, y, rotation } = transform;
+  const { zoom, panX, panY } = viewport;
 
   const cos = Math.cos(rotation);
   const sin = Math.sin(rotation);
 
+  // The object as it appears: magnified, and moved with the view. Rotation is
+  // untouched, since magnifying uniformly turns nothing.
+  const width = transform.width * zoom;
+  const height = transform.height * zoom;
+
   // The object's centre, which rotation happens about.
-  const centreX = x + width / 2;
-  const centreY = y + height / 2;
+  const centreX = (x + transform.width / 2) * zoom + panX;
+  const centreY = (y + transform.height / 2) * zoom + panY;
 
   // Rotating the centred quad leaves this constant offset.
   const offsetX = -0.5 * cos * width + 0.5 * sin * height;

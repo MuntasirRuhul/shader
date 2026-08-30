@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import type { RenderingPort, RenderScene, RuntimeStatus } from './renderingPort';
+import type { RenderingPort, RenderScene, RenderViewport, RuntimeStatus } from './renderingPort';
 
 const packageSrc = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -31,12 +31,16 @@ describe('the port is decoupled from WebGL', () => {
   it('can be implemented without a graphics context', () => {
     // A complete implementation, written here with no WebGL anywhere.
     let scene: RenderScene = { items: [] };
+    let viewport: RenderViewport = { zoom: 1, panX: 0, panY: 0 };
     let frames = 0;
 
     const fake: RenderingPort = {
       status: { kind: 'ready' } satisfies RuntimeStatus,
       setScene: (next) => {
         scene = next;
+      },
+      setViewport: (next) => {
+        viewport = next;
       },
       resize: () => undefined,
       renderFrame: () => {
@@ -56,9 +60,11 @@ describe('the port is decoupled from WebGL', () => {
         },
       ],
     });
+    fake.setViewport({ zoom: 2, panX: -40, panY: 15 });
     fake.renderFrame(0.016);
 
     expect(scene.items).toHaveLength(1);
+    expect(viewport).toEqual({ zoom: 2, panX: -40, panY: 15 });
     expect(frames).toBe(1);
   });
 });

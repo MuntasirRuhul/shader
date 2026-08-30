@@ -2,13 +2,15 @@ import type { ShaderManifest, ShaderPass } from '../../registry/manifest';
 import { resolveValues } from '../../registry/presets';
 import type { ShaderRegistry } from '../../registry/ShaderRegistry';
 import { POINTER_ABSENT } from '../../registry/simulation';
-import type {
-  RenderingPort,
-  RenderItem,
-  RenderScene,
-  RuntimeObserver,
-  RuntimeStatus,
-  TexSource,
+import {
+  IDENTITY_VIEWPORT,
+  type RenderingPort,
+  type RenderItem,
+  type RenderScene,
+  type RenderViewport,
+  type RuntimeObserver,
+  type RuntimeStatus,
+  type TexSource,
 } from '../renderingPort';
 import { SimulationStore } from '../SimulationStore';
 import { computeSurfaceSize, matchesSurfaceSize, type SurfaceSizeOptions } from '../surfaceSize';
@@ -105,6 +107,8 @@ export class WebGlRenderer implements RenderingPort {
   private readonly simulations: SimulationStore;
 
   private scene: RenderScene = { items: [] };
+  /** How the scene is being looked at. Identity draws it as it always was. */
+  private viewport: RenderViewport = IDENTITY_VIEWPORT;
   private currentStatus: RuntimeStatus = { kind: 'ready' };
   private disposed = false;
 
@@ -152,6 +156,17 @@ export class WebGlRenderer implements RenderingPort {
     if (this.disposed) return;
     this.scene = scene;
     this.releaseUnusedResources();
+  }
+
+  /**
+   * Changes how the scene is looked at.
+   *
+   * Deliberately does not touch the scene or the resources held for it: a pan
+   * is a redraw, not a document change.
+   */
+  setViewport(viewport: RenderViewport): void {
+    if (this.disposed) return;
+    this.viewport = viewport;
   }
 
   resize(cssWidth: number, cssHeight: number): void {
@@ -331,7 +346,7 @@ export class WebGlRenderer implements RenderingPort {
     gl.uniformMatrix3fv(
       location('uModel'),
       false,
-      buildModelMatrix(item.transform, this.cssWidth, this.cssHeight),
+      buildModelMatrix(item.transform, this.cssWidth, this.cssHeight, this.viewport),
     );
     gl.uniform2f(
       location(RESERVED_UNIFORMS.resolution),
@@ -371,7 +386,7 @@ export class WebGlRenderer implements RenderingPort {
       // An intermediate pass fills its target rather than landing on the
       // canvas, so it is not placed by the object's transform.
       options.final
-        ? buildModelMatrix(item.transform, this.cssWidth, this.cssHeight)
+        ? buildModelMatrix(item.transform, this.cssWidth, this.cssHeight, this.viewport)
         : FULL_TARGET_MATRIX,
     );
     gl.uniform2f(

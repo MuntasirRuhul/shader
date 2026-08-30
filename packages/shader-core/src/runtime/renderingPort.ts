@@ -47,6 +47,28 @@ export interface RenderScene {
   readonly items: readonly RenderItem[];
 }
 
+/**
+ * How the canvas is being looked at.
+ *
+ * Held apart from the scene because the two change at completely different
+ * rates: a view moves at pointer cadence, a document rarely. Folding the view
+ * into the scene would rebuild the item list, and re-examine every resource
+ * held for it, on every frame of a pan.
+ *
+ * This is a property of looking, never of what is looked at: an object's
+ * stored coordinates mean the same thing at every view.
+ */
+export interface RenderViewport {
+  /** Magnification. 1 draws an object at its stored size. */
+  readonly zoom: number;
+  /** Translation in canvas pixels, applied after magnification. */
+  readonly panX: number;
+  readonly panY: number;
+}
+
+/** Unmagnified and untranslated — how the canvas was drawn before views existed. */
+export const IDENTITY_VIEWPORT: RenderViewport = { zoom: 1, panX: 0, panY: 0 };
+
 export type RuntimeStatus =
   | { readonly kind: 'ready' }
   | { readonly kind: 'unsupported'; readonly reason: string }
@@ -75,6 +97,11 @@ export interface RenderingPort {
   readonly status: RuntimeStatus;
   /** Replaces the scene to be drawn. Cheap: drawing happens on the next frame. */
   setScene: (scene: RenderScene) => void;
+  /**
+   * Replaces how that scene is looked at. Cheaper still: it touches no item
+   * and no resource, so a pan costs a redraw and nothing else.
+   */
+  setViewport: (viewport: RenderViewport) => void;
   /** Matches the drawing surface to a new CSS size. */
   resize: (cssWidth: number, cssHeight: number) => void;
   /**

@@ -221,6 +221,179 @@ describe('a shader that fails to compile', () => {
   });
 });
 
+describe('drawing through a viewport', () => {
+  /** Clip space back to canvas pixels, so assertions read as positions. */
+  function drawnOrigin() {
+    const matrix = gl.lastWriteTo('uModel')?.value as number[];
+    const clipX = matrix[6] ?? 0;
+    const clipY = matrix[7] ?? 0;
+    return { x: ((clipX + 1) / 2) * 800, y: ((1 - clipY) / 2) * 600 };
+  }
+
+  const object = item({ transform: { x: 100, y: 80, width: 200, height: 120, rotation: 0 } });
+
+  it('draws an object where it is stored when given no viewport', () => {
+    // The migration: a runtime nobody tells about a view behaves as it always did.
+    const renderer = createRenderer();
+    renderer.setScene(scene(object));
+    renderer.renderFrame(0);
+
+    expect(drawnOrigin().x).toBeCloseTo(100, 3);
+    expect(drawnOrigin().y).toBeCloseTo(80, 3);
+  });
+
+  it('translates what it draws by the pan', () => {
+    const renderer = createRenderer();
+    renderer.setScene(scene(object));
+    renderer.setViewport({ zoom: 1, panX: -60, panY: 25 });
+    renderer.renderFrame(0);
+
+    expect(drawnOrigin().x).toBeCloseTo(40, 3);
+    expect(drawnOrigin().y).toBeCloseTo(105, 3);
+  });
+
+  it('magnifies what it draws by the zoom', () => {
+    const renderer = createRenderer();
+    renderer.setScene(scene(object));
+    renderer.setViewport({ zoom: 2, panX: 0, panY: 0 });
+    renderer.renderFrame(0);
+
+    expect(drawnOrigin().x).toBeCloseTo(200, 3);
+    expect(drawnOrigin().y).toBeCloseTo(160, 3);
+  });
+
+  it('keeps the view across frames until it is changed', () => {
+    const renderer = createRenderer();
+    renderer.setScene(scene(object));
+    renderer.setViewport({ zoom: 2, panX: -100, panY: 0 });
+    renderer.renderFrame(0);
+    renderer.renderFrame(0.016);
+
+    expect(drawnOrigin().x).toBeCloseTo(100, 3);
+  });
+
+  it('tells a shader its object canvas size, whatever the magnification', () => {
+    // Magnifying enlarges what a shader drew; it does not make it draw
+    // something else at a different scale.
+    const renderer = createRenderer();
+    renderer.setScene(scene(object));
+
+    renderer.renderFrame(0);
+    expect(gl.lastWriteTo('uResolution')?.value).toEqual([200, 120]);
+
+    renderer.setViewport({ zoom: 6, panX: -400, panY: -220 });
+    renderer.renderFrame(0.016);
+    expect(gl.lastWriteTo('uResolution')?.value).toEqual([200, 120]);
+  });
+
+  it('gives an advance the pointer unchanged by the view', () => {
+    const seen: { x: number; y: number; present: boolean }[] = [];
+    const watching = manifestWith({
+      id: 'watching',
+      fragmentSource: 'void main() { outColor = vec4(phase); }',
+      presets: [{ id: 'default', name: 'Default', values: {} }],
+      simulation: {
+        schema: [
+          {
+            name: 'phase',
+            label: 'Phase',
+            type: 'number',
+            defaultValue: 0,
+            min: 0,
+            max: 1,
+            step: 0.01,
+          },
+        ],
+        initial: { phase: 0 },
+        advance: (previous, context) => {
+          seen.push({ ...context.pointer });
+          return previous;
+        },
+      },
+    });
+    registry.register(watching);
+
+    const renderer = createRenderer();
+    renderer.setScene(
+      scene(item({ shaderId: 'watching', pointer: { present: true, x: 0.25, y: 0.75 } })),
+    );
+
+    renderer.renderFrame(0, 1 / 60);
+    renderer.setViewport({ zoom: 5, panX: -910, panY: 340 });
+    renderer.renderFrame(0.016, 1 / 60);
+
+    // Object-local, so where the view happens to be is none of its business.
+    expect(seen).toEqual([
+      { present: true, x: 0.25, y: 0.75 },
+      { present: true, x: 0.25, y: 0.75 },
+    ]);
+  });
+
+  it('reports the pointer absent at any view when it is not over the object', () => {
+    const seen: boolean[] = [];
+    const watching = manifestWith({
+      id: 'watching-absent',
+      fragmentSource: 'void main() { outColor = vec4(phase); }',
+      presets: [{ id: 'default', name: 'Default', values: {} }],
+      simulation: {
+        schema: [
+          {
+            name: 'phase',
+            label: 'Phase',
+            type: 'number',
+            defaultValue: 0,
+            min: 0,
+            max: 1,
+            step: 0.01,
+          },
+        ],
+        initial: { phase: 0 },
+        advance: (previous, context) => {
+          seen.push(context.pointer.present);
+          return previous;
+        },
+      },
+    });
+    registry.register(watching);
+
+    const renderer = createRenderer();
+    renderer.setScene(scene(item({ shaderId: 'watching-absent' })));
+    renderer.setViewport({ zoom: 3, panX: -200, panY: -100 });
+    renderer.renderFrame(0, 1 / 60);
+
+    expect(seen).toEqual([false]);
+  });
+
+  it('costs a redraw, not a rebuild: no resource is touched by a view change', () => {
+    const mask = { source: {} as TexImageSource, revision: 1 };
+    const renderer = createRenderer();
+    renderer.setScene(scene(item({ mask })));
+    renderer.renderFrame(0);
+
+    const texturesBefore = gl.liveTextures;
+    const deletedBefore = gl.deletedTextures.length;
+
+    // A pan, frame by frame, as a drag produces.
+    for (let step = 0; step < 30; step += 1) {
+      renderer.setViewport({ zoom: 1, panX: -step, panY: 0 });
+      renderer.renderFrame(step * 0.016);
+    }
+
+    expect(gl.liveTextures).toBe(texturesBefore);
+    expect(gl.deletedTextures).toHaveLength(deletedBefore);
+    expect(renderer.maskCount).toBe(1);
+  });
+
+  it('ignores a view set after disposal', () => {
+    const renderer = createRenderer();
+    renderer.dispose();
+
+    expect(() => {
+      renderer.setViewport({ zoom: 2, panX: 10, panY: 10 });
+    }).not.toThrow();
+  });
+});
+
 describe('resizing the drawing surface', () => {
   it('sizes the buffer to the CSS size at ratio one', () => {
     const renderer = createRenderer({ devicePixelRatio: () => 1 });
