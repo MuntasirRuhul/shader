@@ -365,11 +365,14 @@ export function previewBounds(
   return unionBounds(
     document.objects
       .filter((object) => chosen.has(object.id))
-      .map((object) => ({
-        ...object,
-        ...absolutePlacement(document, object),
-        ...byId.get(object.id),
-      })),
+      .map((object) => {
+        // The gesture's values are stated the way the object stores them,
+        // which inside a container is relative to it. Applied after the
+        // containers were composed in they would put the indicator at the
+        // canvas origin, so they are applied first and composed after.
+        const dragged = { ...object, ...byId.get(object.id) };
+        return { ...dragged, ...absolutePlacement(document, dragged) };
+      }),
   );
 }
 

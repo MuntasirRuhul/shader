@@ -3,7 +3,9 @@ import {
   AnimationLoop,
   IDENTITY_VIEWPORT,
   WebGlRenderer,
+  isShaderFill,
   type CanvasDocument,
+  type ParameterValues,
   type RenderScene,
   type RenderViewport,
   type RuntimeStatus,
@@ -16,6 +18,56 @@ import { transientChannel, type TransientEdit } from '../store/transientChannel'
 import { buildScene } from './buildScene';
 import { ImageCache } from './imageCache';
 import { TextMaskCache } from './textRasterizer';
+
+/**
+ * The document as a drag currently has it.
+ *
+ * A drag's values belong to the object, so they are applied to the object.
+ * Everything downstream — where it sits inside its containers, the mask a
+ * text object needs, the bounds anything measures — then follows from one
+ * consistent picture rather than from a scene patched after the fact.
+ */
+function withTransientEdits(
+  document: CanvasDocument,
+  edits: readonly TransientEdit[],
+): CanvasDocument {
+  if (edits.length === 0) return document;
+
+  const byObject = new Map<string, TransientEdit[]>();
+  for (const edit of edits) {
+    byObject.set(edit.objectId, [...(byObject.get(edit.objectId) ?? []), edit]);
+  }
+
+  return {
+    ...document,
+    objects: document.objects.map((object) => {
+      const pending = byObject.get(object.id);
+      if (!pending) return object;
+
+      // Dragging an object changes where it is; dragging a control changes
+      // what it draws. The two land in different places.
+      let next = object;
+      const values: Record<string, unknown> = isShaderFill(object.fill)
+        ? { ...object.fill.values }
+        : {};
+      let touchedValues = false;
+
+      for (const edit of pending) {
+        if (isTransformKey(edit.key)) {
+          next = { ...next, [edit.key]: edit.value as number };
+        } else {
+          values[edit.key] = edit.value;
+          touchedValues = true;
+        }
+      }
+
+      if (touchedValues && isShaderFill(next.fill)) {
+        next = { ...next, fill: { ...next.fill, values: values as ParameterValues } };
+      }
+      return next;
+    }),
+  };
+}
 
 /** The object properties a canvas drag changes, as opposed to shader values. */
 const TRANSFORM_KEYS = ['x', 'y', 'width', 'height', 'rotation'] as const;
@@ -95,7 +147,15 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
     const images = imagesRef.current;
     const ratio = typeof window === 'undefined' ? 1 : window.devicePixelRatio;
 
-    const scene = buildScene(document, {
+    // A drag in progress has not reached the document, so its values are laid
+    // over it here — before the scene is built rather than after. What a drag
+    // publishes is stated the way the object stores it, which for something
+    // inside a container is relative to that container; applied to a finished
+    // scene item, whose placement already has its containers composed in, it
+    // would send the object back to the canvas origin.
+    const source = withTransientEdits(document, transientRef.current);
+
+    const scene = buildScene(source, {
       maskFor: (object) =>
         object.type === 'text' ? masks.maskFor(object, viewportRef.current.zoom, ratio) : undefined,
       imageFor: (object) =>
@@ -109,29 +169,7 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
     masks.retainOnly(live);
     images.retainOnly(live);
 
-    const pending = transientRef.current;
-    if (pending.length === 0) return scene;
-
-    // A drag in progress has not reached the document, so its values are laid
-    // over the scene here — which is what makes the canvas follow the pointer
-    // without a store write per move.
-    return {
-      items: scene.items.map((item) => {
-        const overrides = pending.filter((edit) => edit.objectId === item.objectId);
-        if (overrides.length === 0) return item;
-
-        // Dragging an object changes where it is; dragging a control changes
-        // what it draws. The two land in different places.
-        const values = { ...item.values };
-        const transform = { ...item.transform };
-        for (const edit of overrides) {
-          if (isTransformKey(edit.key)) transform[edit.key] = edit.value as number;
-          else values[edit.key] = edit.value as never;
-        }
-
-        return { ...item, values, transform };
-      }),
-    };
+    return scene;
   }, []);
 
   sceneForRef.current = sceneFor;

@@ -1,4 +1,5 @@
 import {
+  absolutePlacement,
   createDocument,
   createFrame,
   createRectangle,
@@ -10,7 +11,13 @@ import { act, render, renderHook, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { EditorState } from '../store/editorStore';
 import { INITIAL_VIEWPORT } from '../store/slices';
-import { movedPositions, onPointerDown, previewBounds, type Gesture } from './interaction';
+import {
+  gestureChanges,
+  movedPositions,
+  onPointerDown,
+  previewBounds,
+  type Gesture,
+} from './interaction';
 import { TextEditor } from './TextEditor';
 import { useCanvasPointer, type CanvasPointerHandlers } from './useCanvasPointer';
 
@@ -245,5 +252,61 @@ describe('reaching grouped text with the pointer, end to end', () => {
     doubleClickAt(result, 950, 720);
 
     expect(beginTextEditing).toHaveBeenCalledWith('t');
+  });
+});
+
+describe('dragging a member is drawn where the pointer is', () => {
+  const document_ = withGroup();
+
+  /** Where the drag says the object is, as the canvas would place it. */
+  function drawnDuringDrag(dx: number, dy: number) {
+    const gesture: Gesture = {
+      kind: 'move',
+      origin: { x: 0, y: 0 },
+      current: { x: dx, y: dy },
+      startPositions: new Map([['t', { x: 0, y: 200 }]]),
+    };
+
+    const [change] = gestureChanges(gesture, document_);
+    const object = document_.objects.find((candidate) => candidate.id === 't');
+    if (!object || !change) throw new Error('no member to drag');
+
+    // Exactly what the canvas does: apply the drag to the object, then place it.
+    const dragged = { ...object, ...change.changes };
+    return absolutePlacement(document_, dragged);
+  }
+
+  it('moves by the drag, from where it was', () => {
+    const before = absolutePlacement(
+      document_,
+      document_.objects.find((candidate) => candidate.id === 't') as never,
+    );
+    const during = drawnDuringDrag(60, 30);
+
+    expect(during.x).toBeCloseTo(before.x + 60, 6);
+    expect(during.y).toBeCloseTo(before.y + 30, 6);
+  });
+
+  it('does not fly to the canvas origin', () => {
+    // A member's coordinates are relative to its group. Applied to a placement
+    // that already had the group composed in, they sent it to the top corner.
+    const during = drawnDuringDrag(10, 10);
+
+    expect(during.x).toBeGreaterThan(500);
+    expect(during.y).toBeGreaterThan(500);
+  });
+
+  it('draws the indicator in the same place', () => {
+    const gesture: Gesture = {
+      kind: 'move',
+      origin: { x: 0, y: 0 },
+      current: { x: 60, y: 30 },
+      startPositions: new Map([['t', { x: 0, y: 200 }]]),
+    };
+    const bounds = previewBounds(document_, ['t'], gesture);
+    const during = drawnDuringDrag(60, 30);
+
+    expect(bounds?.x).toBeCloseTo(during.x, 6);
+    expect(bounds?.y).toBeCloseTo(during.y, 6);
   });
 });
