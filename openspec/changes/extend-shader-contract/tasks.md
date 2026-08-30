@@ -40,7 +40,7 @@
 - [x] 6.2 Author the metaball's real parameter schema — Count, Size, Blur, Magnet, Speed, a colour palette, and the background — matching the controls the experiment has; verify no per-ball editing remains and that the schema passes validation
 - [x] 6.3 Rewrite the metaball manifest to draw from state rather than from authored positions; verify the GLSL reads the state values and declares no count parameter of its own
 - [x] 6.4 Author presets over the real controls; verify each resolves to a complete value set
-- [ ] 6.5 Verify in the browser that the metaball moves, that Magnet pulls the balls together, that Speed changes the rate, and that the cursor pushes them away — matching the source experiment
+- [x] 6.5 Verify in the browser that the metaball moves, that Magnet pulls the balls together, that Speed changes the rate, and that the cursor pushes them away — matching the source experiment
 
 ## 7. Verify the whole
 

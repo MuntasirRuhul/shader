@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ParameterValues } from '../../registry/parameterSchema';
 import { ShaderRegistry } from '../../registry/ShaderRegistry';
 import { manifestWith, sampleManifest } from '../../registry/testFixtures';
 import type { RenderItem, RenderScene } from '../renderingPort';
@@ -122,6 +123,47 @@ describe('drawing a scene', () => {
     renderer.renderFrame(0);
 
     expect(gl.lastWriteTo('uHasMask')?.value).toBe(0);
+  });
+});
+
+describe('advancing a simulation', () => {
+  it('gives the advance the resolved parameter values', () => {
+    // An object carries only what has been changed about it. An advance
+    // reading a parameter nobody touched must still see its declared default.
+    const seen: ParameterValues[] = [];
+    const reading = manifestWith({
+      id: 'reading',
+      fragmentSource: 'void main() { outColor = vec4(phase); }',
+      presets: [{ id: 'default', name: 'Default', values: {} }],
+      simulation: {
+        schema: [
+          {
+            name: 'phase',
+            label: 'Phase',
+            type: 'number',
+            defaultValue: 0,
+            min: 0,
+            max: 1,
+            step: 0.01,
+          },
+        ],
+        initial: { phase: 0 },
+        advance: (previous, context) => {
+          seen.push(context.parameters);
+          return previous;
+        },
+      },
+    });
+    registry.register(reading);
+
+    const renderer = createRenderer();
+    renderer.setScene(scene(item({ shaderId: 'reading', values: { speed: 1.25 } })));
+    renderer.renderFrame(0, 1 / 60);
+
+    expect(seen[0]?.['speed']).toBe(1.25);
+    // Untouched, so its declared default rather than nothing.
+    expect(seen[0]?.['background']).toBe('#0a0a0b');
+    expect(seen[0]?.['poles']).toHaveLength(1);
   });
 });
 

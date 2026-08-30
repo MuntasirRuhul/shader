@@ -1,4 +1,5 @@
 import type { ShaderManifest, ShaderPass } from '../../registry/manifest';
+import { resolveValues } from '../../registry/presets';
 import type { ShaderRegistry } from '../../registry/ShaderRegistry';
 import { POINTER_ABSENT } from '../../registry/simulation';
 import type {
@@ -212,7 +213,10 @@ export class WebGlRenderer implements RenderingPort {
         {
           objectId: item.objectId,
           manifest,
-          parameters: item.values,
+          // Resolved, as the uniform binding resolves them: an advance reading
+          // a parameter the object never set must see the declared default,
+          // not nothing at all.
+          parameters: resolveValues(manifest.parameters, item.values),
           pointer: item.pointer ?? POINTER_ABSENT,
           width: item.transform.width,
           height: item.transform.height,
