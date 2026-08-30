@@ -125,8 +125,10 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
       rendererRef.current = renderer;
 
       const loop = new AnimationLoop({
-        render: (elapsed) => {
-          renderer.renderFrame(elapsed);
+        render: (elapsed, dt) => {
+          // `dt` is what every simulation on the canvas steps by; dropping it
+          // would leave them frozen on their first frame.
+          renderer.renderFrame(elapsed, dt);
         },
         needsAnimation: () => renderer.hasAnimatedContent,
       });

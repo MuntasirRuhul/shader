@@ -13,7 +13,8 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    // Overridable so a second instance can run alongside the first.
+    port: Number(process.env['PORT'] ?? 5173),
   },
   build: {
     outDir: 'dist',

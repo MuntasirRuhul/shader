@@ -77,8 +77,12 @@ export interface RenderingPort {
   setScene: (scene: RenderScene) => void;
   /** Matches the drawing surface to a new CSS size. */
   resize: (cssWidth: number, cssHeight: number) => void;
-  /** Draws one frame immediately, outside the animation loop. */
-  renderFrame: (elapsedSeconds: number) => void;
+  /**
+   * Draws one frame. `dt` is how far rendering advanced since the previous
+   * frame, which is what a simulation steps by; it defaults to nothing, for a
+   * caller drawing a single still frame.
+   */
+  renderFrame: (elapsedSeconds: number, dt?: number) => void;
   /** Releases every resource held. */
   dispose: () => void;
 }
