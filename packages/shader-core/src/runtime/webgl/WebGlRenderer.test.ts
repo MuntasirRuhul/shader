@@ -412,6 +412,38 @@ describe('knowing when frames are needed', () => {
     expect(renderer.hasAnimatedContent).toBe(true);
   });
 
+  it('reports animated content for a shader that owns state', () => {
+    // Its motion is in the advance, not in the program, so nothing about its
+    // source says it moves.
+    const simulated = manifestWith({
+      id: 'simulated',
+      fragmentSource: 'void main() { outColor = vec4(phase); }',
+      parameters: [],
+      presets: [{ id: 'default', name: 'Default', values: {} }],
+      simulation: {
+        schema: [
+          {
+            name: 'phase',
+            label: 'Phase',
+            type: 'number',
+            defaultValue: 0,
+            min: 0,
+            max: 1,
+            step: 0.01,
+          },
+        ],
+        initial: { phase: 0 },
+        advance: (previous) => previous,
+      },
+    });
+    registry.register(simulated);
+
+    const renderer = createRenderer();
+    renderer.setScene(scene(item({ shaderId: 'simulated' })));
+
+    expect(renderer.hasAnimatedContent).toBe(true);
+  });
+
   it('reports no animated content for a still shader', () => {
     const renderer = createRenderer();
     renderer.setScene(scene(item()));

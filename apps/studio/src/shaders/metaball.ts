@@ -1,4 +1,5 @@
 import { MANIFEST_SCHEMA_VERSION, type ShaderManifest } from '@shader/core';
+import { createMetaballAdvance, MAX_BALLS, METABALL_INITIAL_STATE } from './metaballSimulation';
 
 /**
  * The metaball field, ported from the `metaball-shader-control` experiment.
@@ -7,27 +8,30 @@ import { MANIFEST_SCHEMA_VERSION, type ShaderManifest } from '@shader/core';
  * are averaged in OKLab. Where two balls meet they merge into one form rather
  * than overlapping, which is what makes the shape read as liquid.
  *
- * Two things about this port are deliberate.
+ * Three things about this port are deliberate.
  *
  * It reads `vUv` rather than the fragment's position on the drawing surface,
  * because an object is a transformed quad that screen coordinates cannot
  * address.
  *
- * It declares no time and does not move. The source shader has no time
- * uniform: its animation came from the host page rewriting ball positions
- * between frames. Ported faithfully it is a still image, and the runtime will
- * correctly stop drawing it once it has been drawn. Giving it motion here
- * would be new behaviour wearing a port's clothes.
+ * The balls are not authored. Their positions, sizes, and weights are
+ * simulation state: the source experiment moved them from JavaScript every
+ * frame, and the controls it offers — Count, Size, Blur, Magnet, Speed —
+ * govern that motion, not a list of balls. An earlier port had no place to put
+ * the simulation, so it shipped a still image with per-ball editing the source
+ * never had; this one does not.
+ *
+ * It declares no transform controls. The source's Scale, Rotate, X, and Y were
+ * its stand-in for placing the effect on a page. Here the object has a
+ * transform of its own, and the shader fills whatever the object is.
  */
-
-const MAX_BALLS = 24;
 
 export const metaballManifest: ShaderManifest = {
   schemaVersion: MANIFEST_SCHEMA_VERSION,
   id: 'metaball',
   name: 'Metaball',
   category: 'Fields',
-  description: 'Overlapping colour fields that merge where they meet, blended in OKLab.',
+  description: 'Drifting colour fields that merge where they meet, blended in OKLab.',
 
   fragmentSource: `
 float srgb2lin(float c){ return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4); }
@@ -68,10 +72,12 @@ void main() {
   float F = 0.0;
   vec3 labSum = vec3(0.0);
 
-  // Softness lowers the falloff exponent, so a ball reaches further before it
+  // Blur lowers the falloff exponent, so a ball reaches further before it
   // fades — and it widens the alpha transition at the end by the same amount.
-  float edgeExp = mix(4.0, 1.15, softness);
+  float edgeExp = mix(4.0, 1.15, blur);
 
+  // Positions, radii, colours, and weights are all simulation state: the
+  // shader draws where the balls are, and never decides where that is.
   for (int i = 0; i < ${String(MAX_BALLS)}; i++) {
     if (i >= balls_count) break;
     vec2 c = vec2((balls_position[i].x - 0.5) * aspect, balls_position[i].y - 0.5);
@@ -85,118 +91,189 @@ void main() {
 
   vec3 blended = F > 0.0008 ? oklab2rgb(labSum / F) : background;
 
-  float aMin = mix(0.09, 0.015, softness);
-  float aMax = mix(0.60, 0.95, softness);
+  float aMin = mix(0.09, 0.015, blur);
+  float aMax = mix(0.60, 0.95, blur);
   float alpha = smoothstep(aMin, aMax, F);
 
   outColor = vec4(mix(background, blended, alpha), 1.0);
 }
 `,
 
+  /**
+   * The balls the program draws. Nothing here is editable — the state schema
+   * exists so the runtime knows how to bind what the simulation returns, which
+   * it does through exactly the packing a repeatable group of parameters uses.
+   */
+  simulation: {
+    schema: [
+      {
+        name: 'balls',
+        label: 'Ball',
+        type: 'group',
+        maxEntries: MAX_BALLS,
+        entryParameters: [
+          { name: 'color', label: 'Colour', type: 'color', defaultValue: '#ffffff' },
+          {
+            name: 'position',
+            label: 'Position',
+            type: 'vector2',
+            defaultValue: { x: 0.5, y: 0.5 },
+            min: { x: -0.5, y: -0.5 },
+            max: { x: 1.5, y: 1.5 },
+            step: 0.001,
+          },
+          {
+            name: 'radius',
+            label: 'Radius',
+            type: 'number',
+            defaultValue: 0.06,
+            min: 0,
+            max: 1,
+            step: 0.001,
+          },
+          {
+            name: 'weight',
+            label: 'Weight',
+            type: 'number',
+            defaultValue: 1,
+            min: 0,
+            max: 1,
+            step: 0.001,
+          },
+        ],
+        defaultEntries: [],
+      },
+    ],
+    initial: METABALL_INITIAL_STATE,
+    advance: createMetaballAdvance(),
+  },
+
   parameters: [
     {
-      name: 'balls',
-      label: 'Ball',
-      type: 'group',
-      group: 'Field',
-      description: 'Every ball contributes to every pixel, weighted by distance.',
-      maxEntries: MAX_BALLS,
-      minEntries: 1,
-      entryParameters: [
-        { name: 'color', label: 'Colour', type: 'color', defaultValue: '#4d7cff' },
-        {
-          name: 'position',
-          label: 'Position',
-          type: 'vector2',
-          defaultValue: { x: 0.5, y: 0.5 },
-          min: { x: -0.5, y: -0.5 },
-          max: { x: 1.5, y: 1.5 },
-          step: 0.01,
-        },
-        {
-          name: 'radius',
-          label: 'Radius',
-          type: 'number',
-          defaultValue: 0.14,
-          min: 0.01,
-          max: 1,
-          step: 0.005,
-        },
-        {
-          name: 'weight',
-          label: 'Weight',
-          type: 'number',
-          description: 'How strongly this ball pulls the merged colour toward its own.',
-          defaultValue: 1,
-          min: 0,
-          max: 3,
-          step: 0.01,
-        },
-      ],
-      defaultEntries: [
-        { color: '#ff3377', position: { x: 0.34, y: 0.4 }, radius: 0.17, weight: 1 },
-        { color: '#ff9900', position: { x: 0.58, y: 0.32 }, radius: 0.14, weight: 1 },
-        { color: '#0080ff', position: { x: 0.48, y: 0.62 }, radius: 0.16, weight: 1 },
-      ],
-    },
-    {
-      name: 'background',
-      label: 'Background',
-      type: 'color',
-      group: 'Field',
-      defaultValue: '#0f0f12',
-    },
-    {
-      name: 'softness',
-      label: 'Softness',
+      name: 'ballCount',
+      label: 'Count',
       type: 'number',
-      group: 'Field',
+      group: 'Effect',
+      description: 'How many balls drift in the field.',
+      defaultValue: 10,
+      min: 1,
+      max: MAX_BALLS,
+      step: 1,
+      integer: true,
+    },
+    {
+      name: 'size',
+      label: 'Size',
+      type: 'number',
+      group: 'Effect',
+      description: 'The base radius each ball varies around.',
+      defaultValue: 0.06,
+      min: 0.02,
+      max: 0.2,
+      step: 0.01,
+    },
+    {
+      name: 'blur',
+      label: 'Blur',
+      type: 'number',
+      group: 'Effect',
       description: 'How far each ball reaches, and how gently the field fades out.',
       defaultValue: 0,
       min: 0,
       max: 1,
       step: 0.01,
     },
+    {
+      name: 'magnet',
+      label: 'Magnet',
+      type: 'number',
+      group: 'Effect',
+      description: 'How strongly the balls pull toward one another and merge.',
+      defaultValue: 0,
+      min: 0,
+      max: 1,
+      step: 0.01,
+    },
+    {
+      name: 'speed',
+      label: 'Speed',
+      type: 'number',
+      group: 'Motion',
+      description: 'The rate of the whole simulation. At zero the field holds still.',
+      defaultValue: 1,
+      min: 0,
+      max: 3,
+      step: 0.1,
+    },
+    {
+      name: 'palette',
+      label: 'Colour',
+      type: 'group',
+      group: 'Colour',
+      description: 'The pool the balls take their colours from, in turn.',
+      maxEntries: 8,
+      minEntries: 1,
+      entryParameters: [{ name: 'color', label: 'Colour', type: 'color', defaultValue: '#4d7cff' }],
+      defaultEntries: [
+        { color: '#ff3377' },
+        { color: '#ff9900' },
+        { color: '#ffdd00' },
+        { color: '#0080ff' },
+      ],
+    },
+    {
+      name: 'background',
+      label: 'Background',
+      type: 'color',
+      group: 'Colour',
+      defaultValue: '#000000',
+    },
   ],
 
   presets: [
-    { id: 'default', name: 'Trio', values: {} },
+    { id: 'default', name: 'Drift', values: {} },
     {
       id: 'merge',
       name: 'Merge',
       values: {
-        balls: [
-          { color: '#ff3377', position: { x: 0.4, y: 0.5 }, radius: 0.24, weight: 1 },
-          { color: '#0080ff', position: { x: 0.6, y: 0.5 }, radius: 0.24, weight: 1 },
-        ],
-        softness: 0.55,
+        ballCount: 5,
+        size: 0.14,
+        blur: 0.55,
+        magnet: 0.7,
+        speed: 0.8,
+        palette: [{ color: '#ff3377' }, { color: '#0080ff' }],
       },
     },
     {
       id: 'swarm',
       name: 'Swarm',
       values: {
-        balls: [
-          { color: '#ff3377', position: { x: 0.24, y: 0.3 }, radius: 0.1, weight: 1 },
-          { color: '#ff9900', position: { x: 0.44, y: 0.22 }, radius: 0.08, weight: 1 },
-          { color: '#ffd166', position: { x: 0.68, y: 0.3 }, radius: 0.09, weight: 1 },
-          { color: '#0080ff', position: { x: 0.76, y: 0.55 }, radius: 0.1, weight: 1 },
-          { color: '#7a5cff', position: { x: 0.56, y: 0.72 }, radius: 0.11, weight: 1 },
-          { color: '#2de3a7', position: { x: 0.3, y: 0.66 }, radius: 0.09, weight: 1 },
+        ballCount: 20,
+        size: 0.04,
+        blur: 0.2,
+        magnet: 0.15,
+        speed: 2,
+        palette: [
+          { color: '#ff3377' },
+          { color: '#ff9900' },
+          { color: '#ffd166' },
+          { color: '#0080ff' },
+          { color: '#7a5cff' },
+          { color: '#2de3a7' },
         ],
-        softness: 0.2,
       },
     },
     {
       id: 'ink',
       name: 'Ink',
       values: {
-        balls: [
-          { color: '#e8e8ea', position: { x: 0.42, y: 0.44 }, radius: 0.2, weight: 1 },
-          { color: '#9b9ba3', position: { x: 0.62, y: 0.6 }, radius: 0.16, weight: 0.7 },
-        ],
+        ballCount: 6,
+        size: 0.12,
+        blur: 0.8,
+        magnet: 0.3,
+        speed: 0.5,
+        palette: [{ color: '#e8e8ea' }, { color: '#9b9ba3' }],
         background: '#18181c',
-        softness: 0.8,
       },
     },
   ],

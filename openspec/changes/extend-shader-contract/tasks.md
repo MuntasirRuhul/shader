@@ -36,10 +36,10 @@
 
 ## 6. Re-port the metaball
 
-- [ ] 6.1 Port the metaball's simulation — wandering heading, mutual attraction, cursor repulsion, damping, speed clamp, spawn easing — as an advance function; verify it runs headlessly and that balls drift, attract under magnet, and flee the pointer
-- [ ] 6.2 Author the metaball's real parameter schema — Count, Size, Blur, Magnet, Speed, a colour palette, and the background — matching the controls the experiment has; verify no per-ball editing remains and that the schema passes validation
-- [ ] 6.3 Rewrite the metaball manifest to draw from state rather than from authored positions; verify the GLSL reads the state values and declares no count parameter of its own
-- [ ] 6.4 Author presets over the real controls; verify each resolves to a complete value set
+- [x] 6.1 Port the metaball's simulation — wandering heading, mutual attraction, cursor repulsion, damping, speed clamp, spawn easing — as an advance function; verify it runs headlessly and that balls drift, attract under magnet, and flee the pointer
+- [x] 6.2 Author the metaball's real parameter schema — Count, Size, Blur, Magnet, Speed, a colour palette, and the background — matching the controls the experiment has; verify no per-ball editing remains and that the schema passes validation
+- [x] 6.3 Rewrite the metaball manifest to draw from state rather than from authored positions; verify the GLSL reads the state values and declares no count parameter of its own
+- [x] 6.4 Author presets over the real controls; verify each resolves to a complete value set
 - [ ] 6.5 Verify in the browser that the metaball moves, that Magnet pulls the balls together, that Speed changes the rate, and that the cursor pushes them away — matching the source experiment
 
 ## 7. Verify the whole

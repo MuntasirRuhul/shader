@@ -21,11 +21,19 @@ import { libraryShaders, registry } from './registry';
 const catalogue = registry.list();
 const offered = libraryShaders();
 
+/**
+ * Every group a shader declares, whether the user edits it or the simulation
+ * fills it. Both bind through the same uniform arrays.
+ */
+function groupsOf(manifest: ShaderManifest) {
+  return [...manifest.parameters, ...(manifest.simulation?.schema ?? [])].filter(isGroupParameter);
+}
+
 /** The fixed array size a shader's GLSL allocates for a named group. */
 function allocatedSize(manifest: ShaderManifest, groupName: string): number | undefined {
   // The runtime declares `name_entry[N]`; the shader must loop to the same N.
   const declaration = new RegExp(`${groupName}_\\w+\\[(\\d+)\\]`).exec(
-    declareUniforms(manifest.parameters),
+    declareUniforms(groupsOf(manifest)),
   );
   return declaration?.[1] === undefined ? undefined : Number(declaration[1]);
 }
@@ -70,6 +78,42 @@ describe('every shader in the catalogue', () => {
 
 describe('a repeatable group matches what its shader allocates', () => {
   const withGroups = catalogue.flatMap((manifest) =>
+    groupsOf(manifest).map((group) => ({
+      id: `${manifest.id}:${group.name}`,
+      manifest,
+      group,
+    })),
+  );
+
+  /**
+   * The groups the program indexes. A group a shader declares only to drive
+   * its simulation — a colour pool the advance picks from — is bound and read
+   * in JavaScript, and there is no array in the GLSL for it to disagree with.
+   */
+  const readByProgram = withGroups.filter(({ manifest, group }) =>
+    manifest.fragmentSource.includes(`${group.name}_`),
+  );
+
+  it('there is at least one group to check', () => {
+    expect(withGroups.length).toBeGreaterThan(0);
+    expect(readByProgram.length).toBeGreaterThan(0);
+  });
+
+  it.each(readByProgram)('$id declares the size its GLSL allocates', ({ manifest, group }) => {
+    expect(allocatedSize(manifest, group.name)).toBe(group.maxEntries);
+  });
+
+  it.each(readByProgram)('$id loops to that same size', ({ manifest, group }) => {
+    // A loop bound that disagrees with the array silently drops entries.
+    const bound = new RegExp(`i\\s*<\\s*${String(group.maxEntries)}\\b`);
+    expect(manifest.fragmentSource).toMatch(bound);
+  });
+
+  it.each(readByProgram)('$id reads the count the runtime supplies', ({ manifest, group }) => {
+    expect(manifest.fragmentSource).toContain(`${group.name}_count`);
+  });
+
+  const editable = catalogue.flatMap((manifest) =>
     manifest.parameters.filter(isGroupParameter).map((group) => ({
       id: `${manifest.id}:${group.name}`,
       manifest,
@@ -77,30 +121,18 @@ describe('a repeatable group matches what its shader allocates', () => {
     })),
   );
 
-  it('there is at least one group to check', () => {
-    expect(withGroups.length).toBeGreaterThan(0);
-  });
+  it.each(editable)('$id has no parameter counting its entries', ({ manifest, group }) => {
+    // The list the user edits is the only thing that says how many entries
+    // there are. A parameter claiming the same would be a second source of
+    // truth, editable to disagree with the list itself.
+    //
+    // A group the simulation fills is different: nobody edits it, and the
+    // parameter driving how many entries it has is the source of truth.
+    const singular = group.name.replace(/s$/, '');
+    const counters = new Set(['count', `${group.name}count`, `${singular}count`]);
+    const declared = manifest.parameters.map((parameter) => parameter.name.toLowerCase());
 
-  it.each(withGroups)('$id declares the size its GLSL allocates', ({ manifest, group }) => {
-    expect(allocatedSize(manifest, group.name)).toBe(group.maxEntries);
-  });
-
-  it.each(withGroups)('$id loops to that same size', ({ manifest, group }) => {
-    // A loop bound that disagrees with the array silently drops entries.
-    const bound = new RegExp(`i\\s*<\\s*${String(group.maxEntries)}\\b`);
-    expect(manifest.fragmentSource).toMatch(bound);
-  });
-
-  it.each(withGroups)('$id reads the count the runtime supplies', ({ manifest, group }) => {
-    expect(manifest.fragmentSource).toContain(`${group.name}_count`);
-  });
-
-  it.each(withGroups)('$id declares no count parameter of its own', ({ manifest }) => {
-    // A declared count would be a second source of truth for how many
-    // entries exist, and editable to disagree with the list itself.
-    const names = manifest.parameters.map((parameter) => parameter.name.toLowerCase());
-    expect(names).not.toContain('count');
-    expect(names).not.toContain('stopcount');
+    expect(declared.filter((name) => counters.has(name))).toEqual([]);
   });
 });
 

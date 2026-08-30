@@ -135,10 +135,16 @@ export class WebGlRenderer implements RenderingPort {
 
   /** Whether any visible item uses a shader that animates over time. */
   get hasAnimatedContent(): boolean {
-    return this.scene.items.some((item) => {
-      const manifest = this.registry.get(item.shaderId);
-      return manifest !== undefined && usesTime(manifest);
-    });
+    // A shader owning state moves whether or not its program reads the clock:
+    // the metaball's motion is entirely in its advance, and suspending it
+    // would leave a simulation frozen on its first frame.
+    return (
+      this.hasSimulation ||
+      this.scene.items.some((item) => {
+        const manifest = this.registry.get(item.shaderId);
+        return manifest !== undefined && usesTime(manifest);
+      })
+    );
   }
 
   setScene(scene: RenderScene): void {
