@@ -1,0 +1,56 @@
+.typography {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-3);
+  padding: var(--sb-space-4) var(--sb-space-5);
+  border-top: 1px solid var(--sb-border-subtle);
+}
+
+.title {
+  margin: 0;
+  color: var(--sb-text-muted);
+  font-size: var(--sb-font-size-sm);
+  font-weight: var(--sb-font-weight-medium);
+  letter-spacing: var(--sb-letter-spacing-wide);
+  text-transform: uppercase;
+}
+
+.loading {
+  margin: 0;
+  color: var(--sb-text-muted);
+  font-size: var(--sb-font-size-sm);
+}
+
+.scrubRow {
+  display: flex;
+  gap: var(--sb-space-2);
+  align-items: flex-end;
+}
+
+/* Dragging the glyph changes the value; the field beside it stays typable. */
+.scrubHandle {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--sb-border-default);
+  border-radius: var(--sb-radius-sm);
+  background-color: var(--sb-surface-raised);
+  color: var(--sb-text-muted);
+  font-size: var(--sb-font-size-sm);
+  cursor: ew-resize;
+  user-select: none;
+  touch-action: none;
+}
+
+.scrubHandle:hover {
+  border-color: var(--sb-border-strong);
+  color: var(--sb-text-primary);
+}
+
+.scrubField {
+  flex: 1;
+  min-width: 0;
+}

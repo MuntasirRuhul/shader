@@ -10,6 +10,7 @@ import {
   type ShaderRegistry,
 } from '@shader/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { onFontsChanged } from '../inspector/fonts';
 import { transientChannel, type TransientEdit } from '../store/transientChannel';
 import { buildScene } from './buildScene';
 import { TextMaskCache } from './textRasterizer';
@@ -223,6 +224,22 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
         const loop = loopRef.current;
         if (!renderer || !loop) return;
 
+        renderer.setScene(sceneFor(documentRef.current));
+        if (!loop.isRunning) loop.renderOnce();
+      }),
+    [sceneFor],
+  );
+
+  // A webfont arrives after the text that wants it. Everything rasterized in
+  // the fallback has to be rasterized again, or it stays wrong for good.
+  useEffect(
+    () =>
+      onFontsChanged(() => {
+        const renderer = rendererRef.current;
+        const loop = loopRef.current;
+        if (!renderer || !loop) return;
+
+        masksRef.current.clear();
         renderer.setScene(sceneFor(documentRef.current));
         if (!loop.isRunning) loop.renderOnce();
       }),

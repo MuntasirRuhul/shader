@@ -15,6 +15,7 @@ import { useEditorStore } from '../store/editorStore';
 import { transientChannel } from '../store/transientChannel';
 import styles from './Inspector.module.css';
 import { ShaderParameters } from './ShaderParameters';
+import { Typography } from './Typography';
 import { useTransientValues } from './useTransientValues';
 
 export interface InspectorProps {
@@ -93,6 +94,8 @@ export function Inspector({ registry, defaultShaderId }: InspectorProps) {
         {object && isShaderFill(object.fill) && (
           <ShaderPanel objectId={object.id} registry={registry} />
         )}
+
+        {object?.type === 'text' && <Typography object={object} />}
       </div>
 
       <DocumentActions />

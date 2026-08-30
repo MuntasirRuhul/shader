@@ -260,7 +260,23 @@ describe('drawing the glyphs', () => {
       cache.maskFor({ ...text, text: 'one\ntwo' }, 1);
 
       const lineHeight = text.textSettings.fontSize * text.textSettings.lineHeight;
-      expect(stub.calls[1]?.y).toBeCloseTo(lineHeight, 5);
+      const spacing = (stub.calls[1]?.y ?? 0) - (stub.calls[0]?.y ?? 0);
+      expect(spacing).toBeCloseTo(lineHeight, 5);
+    } finally {
+      stub.restore();
+    }
+  });
+
+  it('leaves half the leading above the first line, as a line box does', () => {
+    // CSS centres a glyph in its line box. Drawing from the very top instead
+    // would put the rasterized text higher than the editor showed it, so the
+    // text would jump the moment an edit was committed.
+    const stub = stubCanvas2d();
+    try {
+      cache.maskFor({ ...text, text: 'one' }, 1);
+
+      const { fontSize, lineHeight } = text.textSettings;
+      expect(stub.calls[0]?.y).toBeCloseTo((fontSize * lineHeight - fontSize) / 2, 5);
     } finally {
       stub.restore();
     }
