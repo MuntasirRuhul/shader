@@ -44,15 +44,57 @@ export function isTextEntryFocused(active: Element | null): boolean {
 export const PAN_MODIFIER_KEY = ' ';
 
 /**
+ * Whether the focused element would take a space keystroke for itself.
+ *
+ * Space is a character in a text field and a press on a button — both older
+ * claims than panning. A canvas that took it regardless would swallow a word
+ * in the first case and, in the second, leave every toolbar button dead to the
+ * keyboard.
+ */
+export function focusTakesSpace(active: Element | null): boolean {
+  if (isTextEntryFocused(active)) return true;
+  if (!active) return false;
+
+  if (active instanceof HTMLButtonElement) return true;
+  if (active instanceof HTMLInputElement) return true;
+  if (active instanceof HTMLSelectElement) return true;
+  if (active instanceof HTMLAnchorElement) return active.hasAttribute('href');
+  if (active.tagName === 'SUMMARY') return true;
+
+  // Anything presenting itself as a control is activated by space too.
+  const role = active.getAttribute('role');
+  return role !== null && ACTIVATED_BY_SPACE.has(role);
+}
+
+const ACTIVATED_BY_SPACE = new Set([
+  'button',
+  'checkbox',
+  'link',
+  'menuitem',
+  'menuitemcheckbox',
+  'menuitemradio',
+  'option',
+  'radio',
+  'switch',
+  'tab',
+]);
+
+export interface PanModifierContext {
+  readonly key: string;
+  /** Command on macOS, Control elsewhere. */
+  readonly accelKey: boolean;
+  /** Whether whatever has focus would consume the keystroke itself. */
+  readonly focusTakesSpace: boolean;
+}
+
+/**
  * Whether a keystroke means "pan while I hold this".
  *
- * Space is a character before it is a modifier, so it means panning only when
- * nothing is being typed into. Held apart from `commandFor` because it is not
- * a command: it does not happen on the keystroke, it changes what dragging
- * means until it is released.
+ * Held apart from `commandFor` because it is not a command: it does not happen
+ * on the keystroke, it changes what dragging means until it is released.
  */
-export function isPanModifier(event: KeyContext): boolean {
-  return event.key === PAN_MODIFIER_KEY && !event.accelKey && !event.textEntryFocused;
+export function isPanModifier(event: PanModifierContext): boolean {
+  return event.key === PAN_MODIFIER_KEY && !event.accelKey && !event.focusTakesSpace;
 }
 
 export type CanvasCommand =

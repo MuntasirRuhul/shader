@@ -30,7 +30,7 @@ import {
   rotatedAngle,
   type Gesture,
 } from './interaction';
-import { isPanModifier, isTextEntryFocused } from './keyboard';
+import { focusTakesSpace, isPanModifier } from './keyboard';
 import type { HandlePosition } from './transformHandles';
 import { screenToCanvas, zoomAbout, zoomStep } from './viewport';
 
@@ -74,14 +74,14 @@ export function useCanvasPointer(store: () => EditorState): CanvasPointerHandler
   useEffect(() => {
     const context = (event: KeyboardEvent) => ({
       key: event.key,
-      shiftKey: event.shiftKey,
       accelKey: event.metaKey || event.ctrlKey,
-      textEntryFocused: isTextEntryFocused(document.activeElement),
+      focusTakesSpace: focusTakesSpace(document.activeElement),
     });
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.repeat || !isPanModifier(context(event))) return;
-      // Space would otherwise scroll the page, or press whatever has focus.
+      // Only once it is certainly the modifier: space would otherwise scroll
+      // the page. A focused control has already been left to have it.
       event.preventDefault();
       setPanHeld(true);
     };

@@ -47,6 +47,19 @@ describe('the canvas layers are ordered explicitly', () => {
   });
 });
 
+describe('the layers stay inside the canvas', () => {
+  it('the stage isolates them, so none of them outranks the application', () => {
+    // Without this the ordering above is not local: the drawing surface,raised
+    // over the ground, rises over the floating toolbar as well and swallows
+    // every click meant for it. The toolbar stays visible throughout, which is
+    // what makes the failure baffling rather than obvious.
+    const css = readFileSync(join(here, 'CanvasStage.module.css'), 'utf8');
+    const stage = /\.stage\s*\{[^}]*\}/s.exec(css)?.[0] ?? '';
+
+    expect(stage).toMatch(/isolation:\s*isolate/);
+  });
+});
+
 describe('the ground is not the renderer business', () => {
   it('is drawn in CSS, so it costs nothing while the loop is idle', () => {
     const ground = readFileSync(join(here, 'ground.ts'), 'utf8');

@@ -1,4 +1,11 @@
 .stage {
+  /*
+   * The layers below are ordered against each other only. Without this they
+   * are ordered against the whole application, and the drawing surface — which
+   * sits above the ground — rises above the floating toolbar too, swallowing
+   * every click meant for it.
+   */
+  isolation: isolate;
   position: relative;
   width: 100%;
   height: 100%;

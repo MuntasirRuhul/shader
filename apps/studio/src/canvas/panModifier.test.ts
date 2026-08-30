@@ -1,7 +1,13 @@
 import { createDocument, createRectangle } from '@shader/core';
 import { describe, expect, it } from 'vitest';
 import { cursorFor, IDLE, onPointerDown, type Gesture } from './interaction';
-import { commandFor, isPanModifier, PAN_MODIFIER_KEY } from './keyboard';
+import {
+  commandFor,
+  focusTakesSpace,
+  isPanModifier,
+  PAN_MODIFIER_KEY,
+  type PanModifierContext,
+} from './keyboard';
 
 /**
  * Panning without leaving the active tool, and the two framing commands.
@@ -11,11 +17,10 @@ import { commandFor, isPanModifier, PAN_MODIFIER_KEY } from './keyboard';
  * every case where space must stay a character.
  */
 
-const context = (over: Partial<Parameters<typeof isPanModifier>[0]> = {}) => ({
+const context = (over: Partial<PanModifierContext> = {}): PanModifierContext => ({
   key: PAN_MODIFIER_KEY,
-  shiftKey: false,
   accelKey: false,
-  textEntryFocused: false,
+  focusTakesSpace: false,
   ...over,
 });
 
@@ -27,7 +32,7 @@ describe('space means pan, except when it means a space', () => {
   it('is not the pan modifier while text is being edited', () => {
     // The whole reason this is a separate rule: a space typed into a text
     // object must reach the text object.
-    expect(isPanModifier(context({ textEntryFocused: true }))).toBe(false);
+    expect(isPanModifier(context({ focusTakesSpace: true }))).toBe(false);
   });
 
   it('is not the pan modifier as part of an accelerator', () => {
@@ -42,8 +47,11 @@ describe('space means pan, except when it means a space', () => {
 
   it('is not a command, so it triggers nothing on the keystroke itself', () => {
     // Holding it changes what dragging means; pressing it does nothing.
-    expect(commandFor(context())).toBeNull();
-    expect(commandFor(context({ textEntryFocused: true }))).toBeNull();
+    const asKeystroke = (textEntryFocused: boolean) =>
+      commandFor({ key: PAN_MODIFIER_KEY, shiftKey: false, accelKey: false, textEntryFocused });
+
+    expect(asKeystroke(false)).toBeNull();
+    expect(asKeystroke(true)).toBeNull();
   });
 });
 
@@ -137,5 +145,65 @@ describe('framing is two commands, not one that guesses', () => {
         commandFor({ key: k, shiftKey: true, accelKey: false, textEntryFocused: true }),
       ).toBeNull();
     }
+  });
+});
+
+describe('space belongs to whatever has focus before it belongs to the canvas', () => {
+  const focused = (element: Element) => {
+    document.body.append(element);
+    (element as HTMLElement).focus();
+    return element;
+  };
+
+  it('leaves it to a button, so a toolbar stays usable from the keyboard', () => {
+    // Pressing space is how a keyboard user presses a button. A canvas that
+    // took it regardless would leave every tool button dead.
+    const button = focused(document.createElement('button'));
+
+    expect(focusTakesSpace(button)).toBe(true);
+    expect(isPanModifier(context({ focusTakesSpace: focusTakesSpace(button) }))).toBe(false);
+
+    button.remove();
+  });
+
+  it.each([
+    ['textarea', document.createElement('textarea')],
+    ['select', document.createElement('select')],
+    ['checkbox', Object.assign(document.createElement('input'), { type: 'checkbox' })],
+    ['text field', Object.assign(document.createElement('input'), { type: 'text' })],
+  ])('leaves it to a %s', (_name, element) => {
+    const active = focused(element);
+
+    expect(focusTakesSpace(active)).toBe(true);
+
+    active.remove();
+  });
+
+  it.each(['button', 'checkbox', 'switch', 'tab', 'menuitem'])(
+    'leaves it to anything presenting itself as a %s',
+    (role) => {
+      const element = document.createElement('div');
+      element.setAttribute('role', role);
+      element.tabIndex = 0;
+      const active = focused(element);
+
+      expect(focusTakesSpace(active)).toBe(true);
+
+      active.remove();
+    },
+  );
+
+  it('takes it when nothing has focus but the page itself', () => {
+    expect(focusTakesSpace(document.body)).toBe(false);
+    expect(focusTakesSpace(null)).toBe(false);
+  });
+
+  it('takes it over a plain element, which is what the canvas is', () => {
+    const canvas = focused(document.createElement('canvas'));
+
+    expect(focusTakesSpace(canvas)).toBe(false);
+    expect(isPanModifier(context())).toBe(true);
+
+    canvas.remove();
   });
 });
