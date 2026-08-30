@@ -1,4 +1,6 @@
 import type { ParameterValues } from '../registry/parameterSchema';
+import type { PointerInput } from '../registry/simulation';
+import type { AdvanceFailure } from './SimulationStore';
 
 /**
  * What the canvas depends on to draw. Nothing here mentions WebGL: the canvas
@@ -26,6 +28,11 @@ export interface RenderItem {
   readonly opacity: number;
   /** Optional alpha mask, used by text objects to shape the shader's output. */
   readonly mask?: TexSource;
+  /**
+   * Where the pointer is over this object, for a shader that reacts to it.
+   * Absent when the pointer is elsewhere.
+   */
+  readonly pointer?: PointerInput;
 }
 
 /** An image the runtime can upload, e.g. a rasterized glyph run. */
@@ -55,6 +62,8 @@ export interface ShaderCompileFailure {
 export interface RuntimeObserver {
   readonly onStatusChange?: (status: RuntimeStatus) => void;
   readonly onCompileFailure?: (failure: ShaderCompileFailure) => void;
+  /** A shader whose advance threw, or which consistently overruns its budget. */
+  readonly onAdvanceFailure?: (failure: AdvanceFailure) => void;
 }
 
 /**

@@ -7,12 +7,12 @@
 
 ## 2. Advance state each frame
 
-- [ ] 2.1 Hold state per object rather than per shader; verify two objects using one shader advance independently and neither sees the other's values
-- [ ] 2.2 Advance every object's state once per frame, before drawing; verify the order and that exactly one advance happens per frame per object
-- [ ] 2.3 Pass real elapsed seconds, so the simulation runs at a consistent speed under a varying frame rate; verify against simulated frame-rate variation
-- [ ] 2.4 Verify an advance after a suspension receives the time spent rendering rather than the time spent suspended
-- [ ] 2.5 Bind the values an advance returns through the existing uniform binding, including repeatable-group packing; verify a returned array reaches the program exactly as a parameter array does
-- [ ] 2.6 Verify an object whose shader declares no state costs no advance step
+- [x] 2.1 Hold state per object rather than per shader; verify two objects using one shader advance independently and neither sees the other's values
+- [x] 2.2 Advance every object's state once per frame, before drawing; verify the order and that exactly one advance happens per frame per object
+- [x] 2.3 Pass real elapsed seconds, so the simulation runs at a consistent speed under a varying frame rate; verify against simulated frame-rate variation
+- [x] 2.4 Verify an advance after a suspension receives the time spent rendering rather than the time spent suspended
+- [x] 2.5 Bind the values an advance returns through the existing uniform binding, including repeatable-group packing; verify a returned array reaches the program exactly as a parameter array does
+- [x] 2.6 Verify an object whose shader declares no state costs no advance step
 
 ## 3. Pointer input
 
@@ -21,8 +21,8 @@
 
 ## 4. Contain a failing advance
 
-- [ ] 4.1 Report an advance that throws, with the shader's identity, and stop advancing that object while the rest of the canvas keeps rendering; verify both
-- [ ] 4.2 Measure advance duration and report a shader that consistently overruns the frame budget; verify it is reported against the shader rather than surfacing as an unexplained stutter
+- [x] 4.1 Report an advance that throws, with the shader's identity, and stop advancing that object while the rest of the canvas keeps rendering; verify both
+- [x] 4.2 Measure advance duration and report a shader that consistently overruns the frame budget; verify it is reported against the shader rather than surfacing as an unexplained stutter
 
 ## 5. Rendering passes
 

@@ -224,7 +224,9 @@ describe('elapsed time is frame-rate independent', () => {
     host.advance(0);
     host.advance(20);
 
-    expect(render).toHaveBeenLastCalledWith(0.02);
+    // The renderer also receives how far this frame advanced, so a simulation
+    // can step by real time rather than by frame count.
+    expect(render).toHaveBeenLastCalledWith(0.02, 0.02);
   });
 
   it('starts at zero', () => {
@@ -317,5 +319,40 @@ describe('disposal', () => {
     host.setVisible(true);
 
     expect(loop.isRunning).toBe(false);
+  });
+});
+
+describe('the step each frame advances by', () => {
+  it('reports how far this frame moved, not the total', () => {
+    const loop = createLoop();
+    loop.reconcile();
+
+    // The first frame only establishes the baseline timestamp, so two of the
+    // three advances contribute elapsed time.
+    host.advance(16);
+    host.advance(16);
+    host.advance(16);
+
+    const lastCall = render.mock.lastCall as [number, number] | undefined;
+    expect(lastCall?.[0]).toBeCloseTo(0.032, 5);
+    expect(lastCall?.[1]).toBeCloseTo(0.016, 5);
+  });
+
+  it('advances nothing for a one-off redraw', () => {
+    const loop = createLoop();
+
+    // Redrawing after a parameter change must not step the simulation.
+    loop.renderOnce();
+
+    expect(render.mock.lastCall?.[1]).toBe(0);
+  });
+
+  it('clamps a stalled frame rather than jumping the simulation forward', () => {
+    const loop = createLoop();
+    loop.reconcile();
+
+    host.advance(5000);
+
+    expect(render.mock.lastCall?.[1]).toBeLessThan(1);
   });
 });

@@ -40,8 +40,12 @@ export function browserLoopEnvironment(): LoopEnvironment {
 }
 
 export interface AnimationLoopOptions {
-  /** Draws one frame at the given elapsed time, in seconds. */
-  readonly render: (elapsedSeconds: number) => void;
+  /**
+   * Draws one frame at the given elapsed time, in seconds, having advanced by
+   * `dt` seconds since the previous frame. `dt` is rendering time: a
+   * suspension contributes nothing to it.
+   */
+  readonly render: (elapsedSeconds: number, dt: number) => void;
   /** Whether anything on screen currently needs continuous frames. */
   readonly needsAnimation: () => boolean;
   readonly environment?: LoopEnvironment;
@@ -58,6 +62,8 @@ export class AnimationLoop {
    * forward by however long it was hidden.
    */
   private elapsedMs = 0;
+  /** How far the last frame advanced, so a simulation steps by real time. */
+  private lastDeltaMs = 0;
   private lastTimestamp: number | null = null;
   private running = false;
   private disposed = false;
@@ -107,7 +113,9 @@ export class AnimationLoop {
   renderOnce(): void {
     if (this.disposed) return;
     this.frameCount += 1;
-    this.options.render(this.elapsedSeconds);
+    // A one-off redraw advances no time: reusing the last frame's delta would
+    // step a simulation forward every time a parameter changed.
+    this.options.render(this.elapsedSeconds, 0);
   }
 
   private start(): void {
@@ -146,12 +154,13 @@ export class AnimationLoop {
       const delta = timestamp - this.lastTimestamp;
       // A tab restored after a long pause can report an enormous delta; clamp
       // it so the animation never lurches.
-      this.elapsedMs += Math.min(Math.max(delta, 0), MAX_FRAME_DELTA_MS);
+      this.lastDeltaMs = Math.min(Math.max(delta, 0), MAX_FRAME_DELTA_MS);
+      this.elapsedMs += this.lastDeltaMs;
     }
     this.lastTimestamp = timestamp;
 
     this.frameCount += 1;
-    this.options.render(this.elapsedSeconds);
+    this.options.render(this.elapsedSeconds, this.lastDeltaMs / 1000);
 
     if (this.running) this.schedule();
   }

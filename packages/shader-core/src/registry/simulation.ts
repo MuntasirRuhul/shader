@@ -1,4 +1,4 @@
-import type { ParameterValue, ParameterValues } from './parameterSchema';
+import type { ParameterSchema, ParameterValue, ParameterValues } from './parameterSchema';
 
 /**
  * A shader that owns state between frames.
@@ -53,6 +53,15 @@ export type AdvanceFunction = (
 ) => SimulationState;
 
 export interface SimulationDeclaration {
+  /**
+   * The shape of the state, in the same vocabulary parameters use.
+   *
+   * State binds through the parameter binding — same types, same array
+   * packing — so it needs the same type information. Inferring it from the
+   * initial values would guess wrong on an empty array, which is exactly what
+   * a simulation that starts with nothing has.
+   */
+  readonly schema: ParameterSchema;
   /** What the state holds before the first advance. */
   readonly initial: SimulationState;
   readonly advance: AdvanceFunction;

@@ -1,5 +1,6 @@
 import type { ShaderManifest } from '../../registry/manifest';
 import type { ShaderRegistry } from '../../registry/ShaderRegistry';
+import { POINTER_ABSENT } from '../../registry/simulation';
 import type {
   RenderingPort,
   RenderItem,
@@ -8,6 +9,7 @@ import type {
   RuntimeStatus,
   TexSource,
 } from '../renderingPort';
+import { SimulationStore } from '../SimulationStore';
 import { computeSurfaceSize, matchesSurfaceSize, type SurfaceSizeOptions } from '../surfaceSize';
 import type { GlContext, GlTexture, GlVertexArray } from './glTypes';
 import { ProgramCache } from './ProgramCache';
@@ -62,6 +64,8 @@ export class WebGlRenderer implements RenderingPort {
   private cssWidth: number;
   private cssHeight: number;
 
+  private readonly simulations: SimulationStore;
+
   private scene: RenderScene = { items: [] };
   private currentStatus: RuntimeStatus = { kind: 'ready' };
   private disposed = false;
@@ -80,6 +84,9 @@ export class WebGlRenderer implements RenderingPort {
     this.cssWidth = options.surface.width;
     this.cssHeight = options.surface.height;
 
+    this.simulations = new SimulationStore({
+      onAdvanceFailure: (failure) => options.observer?.onAdvanceFailure?.(failure),
+    });
     this.programs = new ProgramCache(this.gl);
     this.vao = this.gl.createVertexArray();
   }
@@ -115,7 +122,14 @@ export class WebGlRenderer implements RenderingPort {
     this.surface.height = size.pixelHeight;
   }
 
-  renderFrame(elapsedSeconds: number): void {
+  /**
+   * Advances every object's simulation, then draws.
+   *
+   * Advancing first means a frame shows the state it just computed. Drawing
+   * first would show the initial state for one frame and lag by one forever
+   * after. `dt` is rendering time, so a suspension contributes nothing.
+   */
+  renderFrame(elapsedSeconds: number, dt = 0): void {
     if (this.disposed) return;
 
     const { gl } = this;
@@ -135,10 +149,41 @@ export class WebGlRenderer implements RenderingPort {
     gl.enable(gl.BLEND);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
+    this.advanceSimulations(dt);
+
     // Back to front: the scene arrives in stacking order.
     for (const item of this.scene.items) {
       this.drawItem(item, elapsedSeconds);
     }
+  }
+
+  /** Runs every object's advance once, before anything is drawn. */
+  private advanceSimulations(dt: number): void {
+    for (const item of this.scene.items) {
+      const manifest = this.registry.get(item.shaderId);
+      // A shader without a simulation costs a lookup and nothing more.
+      if (!manifest?.simulation) continue;
+
+      this.simulations.advance(
+        {
+          objectId: item.objectId,
+          manifest,
+          parameters: item.values,
+          pointer: item.pointer ?? POINTER_ABSENT,
+          width: item.transform.width,
+          height: item.transform.height,
+        },
+        dt,
+      );
+    }
+
+    // Objects that have left the scene keep no state.
+    this.simulations.retainOnly(this.scene.items.map((item) => item.objectId));
+  }
+
+  /** Whether anything on the canvas owns state, and so must keep animating. */
+  get hasSimulation(): boolean {
+    return this.scene.items.some((item) => this.registry.get(item.shaderId)?.simulation);
   }
 
   private drawItem(item: RenderItem, elapsedSeconds: number): void {
@@ -177,6 +222,11 @@ export class WebGlRenderer implements RenderingPort {
     this.bindMask(item, location(RESERVED_UNIFORMS.hasMask), location(RESERVED_UNIFORMS.mask));
 
     bindParameters(gl, location, manifest.parameters, item.values);
+
+    const state = this.simulations.valuesFor(item.objectId);
+    if (state) {
+      bindParameters(gl, location, manifest.simulation?.schema ?? [], state);
+    }
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }

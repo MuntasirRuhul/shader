@@ -33,7 +33,21 @@ function context(overrides: Partial<AdvanceContext> = {}): AdvanceContext {
 describe('declaring a simulation', () => {
   it('accepts a manifest declaring both an initial state and an advance', () => {
     const withState = manifest({
-      simulation: { initial: { drift: 0 }, advance: (previous) => previous },
+      simulation: {
+        schema: [
+          {
+            name: 'drift',
+            label: 'Drift',
+            type: 'number',
+            defaultValue: 0,
+            min: 0,
+            max: 1e9,
+            step: 1,
+          },
+        ],
+        initial: { drift: 0 },
+        advance: (previous) => previous,
+      },
     });
 
     expect(validateManifest(withState)).toEqual([]);
@@ -45,7 +59,20 @@ describe('declaring a simulation', () => {
 
   it('rejects an initial state with no advance, naming the missing half', () => {
     const half = manifest({
-      simulation: { initial: { drift: 0 } } as never,
+      simulation: {
+        schema: [
+          {
+            name: 'drift',
+            label: 'Drift',
+            type: 'number',
+            defaultValue: 0,
+            min: 0,
+            max: 1,
+            step: 1,
+          },
+        ],
+        initial: { drift: 0 },
+      } as never,
     });
 
     const errors = validateManifest(half);
@@ -56,7 +83,10 @@ describe('declaring a simulation', () => {
 
   it('rejects an advance with no initial state, naming the missing half', () => {
     const half = manifest({
-      simulation: { advance: (previous: SimulationState) => previous } as never,
+      simulation: {
+        schema: [],
+        advance: (previous: SimulationState) => previous,
+      } as never,
     });
 
     const errors = validateManifest(half);
@@ -65,7 +95,21 @@ describe('declaring a simulation', () => {
 
   it('rejects a state value colliding with a parameter', () => {
     const clashing = manifest({
-      simulation: { initial: { speed: 0 }, advance: (previous) => previous },
+      simulation: {
+        schema: [
+          {
+            name: 'speed',
+            label: 'Speed',
+            type: 'number',
+            defaultValue: 0,
+            min: 0,
+            max: 1,
+            step: 1,
+          },
+        ],
+        initial: { speed: 0 },
+        advance: (previous) => previous,
+      },
     });
 
     const errors = validateManifest(clashing);
@@ -76,7 +120,30 @@ describe('declaring a simulation', () => {
 
   it('allows a state value whose name no parameter uses', () => {
     const fine = manifest({
-      simulation: { initial: { positions: [] }, advance: (previous) => previous },
+      simulation: {
+        schema: [
+          {
+            name: 'positions',
+            label: 'Positions',
+            type: 'group',
+            maxEntries: 4,
+            entryParameters: [
+              {
+                name: 'x',
+                label: 'X',
+                type: 'number',
+                defaultValue: 0,
+                min: -1,
+                max: 1,
+                step: 0.01,
+              },
+            ],
+            defaultEntries: [],
+          },
+        ],
+        initial: { positions: [] },
+        advance: (previous) => previous,
+      },
     });
 
     expect(validateManifest(fine)).toEqual([]);

@@ -281,6 +281,17 @@ function validateSimulation(manifest: ShaderManifest, errors: ManifestError[]): 
 
   const hasInitial = typeof simulation.initial === 'object' && simulation.initial !== null;
   const hasAdvance = typeof simulation.advance === 'function';
+  const schema: ParameterSchema | undefined = Array.isArray(simulation.schema)
+    ? simulation.schema
+    : undefined;
+
+  if (!schema) {
+    errors.push({
+      path: 'simulation.schema',
+      message:
+        'Declares a simulation with no schema. State binds as parameters do, so it needs the same type information.',
+    });
+  }
 
   if (!hasInitial) {
     errors.push({
@@ -300,6 +311,15 @@ function validateSimulation(manifest: ShaderManifest, errors: ManifestError[]): 
   // would leave one silently overwriting the other.
   const parameters: ParameterSchema = Array.isArray(manifest.parameters) ? manifest.parameters : [];
   const parameterNames = new Set(parameters.map((parameter) => parameter.name));
+  for (const entry of schema ?? []) {
+    if (simulation.initial[entry.name] === undefined) {
+      errors.push({
+        path: `simulation.initial.${entry.name}`,
+        message: `State declares "${entry.name}" but the initial state has no value for it.`,
+      });
+    }
+  }
+
   for (const name of Object.keys(simulation.initial)) {
     if (parameterNames.has(name)) {
       errors.push({
