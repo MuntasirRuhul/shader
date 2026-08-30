@@ -57,12 +57,12 @@ it testable without a DOM.
 
 ## The shaders it ships
 
-| Shader        | What it does                                                                                           |
-| ------------- | ------------------------------------------------------------------------------------------------------ |
-| Mesh gradient | Colour poles blended through a field-weighted OKLab average, with an animated warp                     |
-| Metaball      | Overlapping colour fields that merge where they meet. Still by design — the source shader has no clock |
-| Ribbon        | A drifting field sliced into coloured contour bands, seen through a glass lens                         |
-| Soft gradient | A two-colour gradient with a slow animated warp                                                        |
+| Shader        | What it does                                                                                                |
+| ------------- | ----------------------------------------------------------------------------------------------------------- |
+| Mesh gradient | Colour poles blended through a field-weighted OKLab average, with an animated warp                          |
+| Metaball      | Drifting colour fields that merge where they meet, pulled together by Magnet and pushed apart by the cursor |
+| Ribbon        | A drifting field sliced into coloured contour bands, seen through a glass lens                              |
+| Soft gradient | A two-colour gradient with a slow animated warp                                                             |
 
 Each is one file under `apps/studio/src/shaders/`, registered in
 `registry.ts`. Nothing else knows they exist.
@@ -122,6 +122,74 @@ A repeatable group named `poles` with an entry parameter `color` binds as
 `poles_color[N]`, alongside `poles_count`. The array is sized at the group's
 declared `maxEntries`, because GLSL sizes arrays at compile time — which is why
 that maximum is required rather than optional.
+
+### State a shader owns between frames
+
+Most shaders are pure functions of time; some are not. A manifest may declare
+state and a function that advances it, which is where a simulation lives — the
+metaball's wandering, mutually attracting balls, for instance.
+
+```ts
+simulation: {
+  // The shape of the state, in the same vocabulary parameters use.
+  schema: [{ name: 'phase', label: 'Phase', type: 'number', defaultValue: 0, min: 0, max: 1, step: 0.01 }],
+  initial: { phase: 0 },
+  advance: (previous, { dt, elapsed, parameters, pointer, width, height }) => ({
+    phase: (previous.phase as number) + dt * (parameters.speed as number),
+  }),
+},
+```
+
+What that buys, and what it costs:
+
+- State is per object. Two objects filled by one shader drift independently.
+- The advance runs once per frame, before drawing, and `dt` is real rendering
+  seconds — so the motion is the same at any frame rate, and a suspension
+  contributes nothing.
+- What it returns binds exactly as parameters do, arrays and all, so a state
+  value may not share a name with a parameter.
+- It is a plain function: no document, no browser, no clock of its own. That is
+  what lets a shader's motion be tested without a canvas.
+- An advance that throws is reported against the shader and that object stops
+  advancing; the rest of the canvas keeps drawing. One that consistently
+  overruns the frame budget is reported too, rather than quietly costing frame
+  rate.
+- State is never saved. A reopened document starts from `initial`, which is
+  correct for drifting motion and worth knowing before expecting an arrangement
+  to come back where it was left.
+
+`pointer` arrives in the object's own coordinates — the same space `vUv` uses,
+so a shader reacting to the cursor behaves the same wherever the object sits,
+at any rotation. It reports `present: false` when the pointer is elsewhere,
+rather than holding its last position.
+
+### Rendering through several passes
+
+A shader may declare passes in order instead of a single program. Each has its
+own fragment source and names what it reads: an earlier pass from this frame,
+or any pass as of the previous one.
+
+```ts
+passes: [
+  { name: 'field', fragmentSource: '...' },
+  {
+    name: 'surface',
+    fragmentSource: 'void main() { outColor = texture(uField, vUv); }',
+    reads: [{ uniform: 'uField', pass: 'field' }],
+  },
+],
+```
+
+Each pass runs once a frame, in order, through a target sized to the object;
+only the last reaches the canvas. A pass reading its own previous frame is how
+a simulation held on the GPU carries forward — the runtime swaps the buffers,
+so the shader only ever sees "what I wrote last time", and the first frame
+reads a cleared target rather than whatever was in memory. Every pass shares
+the shader's parameters and state. Reading a pass that runs later is rejected
+at registration.
+
+A manifest declaring neither state nor passes behaves exactly as it did before
+either existed, and allocates nothing extra.
 
 ## The design system
 

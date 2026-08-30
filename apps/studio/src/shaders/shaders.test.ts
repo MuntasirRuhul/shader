@@ -136,6 +136,31 @@ describe('a repeatable group matches what its shader allocates', () => {
   });
 });
 
+describe('a shader that declares neither state nor passes', () => {
+  // The migration for every existing shader was to do nothing, and this is
+  // what says so: only the metaball took up either capability.
+  const unchanged = catalogue.filter((manifest) => manifest.id !== 'metaball');
+
+  it('is most of the catalogue', () => {
+    expect(unchanged.length).toBeGreaterThan(1);
+  });
+
+  it.each(unchanged)('$id owns no state', (manifest) => {
+    expect(manifest.simulation).toBeUndefined();
+  });
+
+  it.each(unchanged)('$id declares no passes', (manifest) => {
+    expect(manifest.passes).toBeUndefined();
+  });
+
+  it('leaves the metaball as the one shader using them', () => {
+    const metaball = registry.get('metaball');
+
+    expect(metaball?.simulation).toBeDefined();
+    expect(metaball?.passes).toBeUndefined();
+  });
+});
+
 describe('the library listing', () => {
   it('offers exactly one entry per shader', () => {
     const entries = offered.map((manifest) => manifest.id);

@@ -242,6 +242,141 @@ describe('a pass reading its own previous frame', () => {
   });
 });
 
+describe('state and passes together', () => {
+  /**
+   * The two capabilities composing rather than merely coexisting: the field
+   * pass draws from simulated positions into a target, and the treatment pass
+   * reads that target — which is the shape the ink studio takes.
+   */
+  const both = manifestWith({
+    id: 'both',
+    parameters: [],
+    presets: [{ id: 'default', name: 'Default', values: {} }],
+    simulation: {
+      schema: [
+        {
+          name: 'travelled',
+          label: 'Travelled',
+          type: 'number',
+          defaultValue: 0,
+          min: 0,
+          max: 1000,
+          step: 0.001,
+        },
+      ],
+      initial: { travelled: 0 },
+      advance: (previous, context) => ({
+        travelled: (previous['travelled'] as number) + context.dt,
+      }),
+    },
+    passes: [
+      { name: 'field', fragmentSource: 'void main() { outColor = vec4(travelled); }' },
+      {
+        name: 'treat',
+        fragmentSource: 'void main() { outColor = texture(uField, vUv) * travelled; }',
+        reads: [{ uniform: 'uField', pass: 'field' }],
+      },
+    ],
+  });
+
+  beforeEach(() => {
+    registry.register(both);
+  });
+
+  it('gives every pass the advancing state', () => {
+    const renderer = createRenderer();
+    renderer.setScene(scene(item({ shaderId: 'both' })));
+    renderer.renderFrame(0, 0.5);
+    renderer.renderFrame(0.5, 0.5);
+
+    // Two passes a frame, four writes, all reaching one second of travel.
+    const written = gl.writesTo('travelled').map((write) => write.value);
+    expect(written).toHaveLength(4);
+    expect(written.at(-1)).toBeCloseTo(1, 5);
+    expect(written.at(-2)).toBeCloseTo(1, 5);
+  });
+
+  it('advances once per frame however many passes read the state', () => {
+    const renderer = createRenderer();
+    renderer.setScene(scene(item({ shaderId: 'both' })));
+    renderer.renderFrame(0, 1);
+
+    // One advance, not one per pass: both passes see the same instant.
+    const written = gl.writesTo('travelled').map((write) => write.value);
+    expect(written).toEqual([1, 1]);
+  });
+
+  it('still renders the passes in order, through a target', () => {
+    const renderer = createRenderer();
+    renderer.setScene(scene(item({ shaderId: 'both' })));
+    renderer.renderFrame(0, 1 / 60);
+
+    expect(gl.draws).toHaveLength(2);
+    expect(gl.draws[0]?.target).not.toBeNull();
+    expect(gl.draws[1]?.target).toBeNull();
+  });
+
+  it('keeps each object own state and own targets', () => {
+    const renderer = createRenderer();
+    renderer.setScene(
+      scene(item({ shaderId: 'both' }), item({ objectId: 'object-2', shaderId: 'both' })),
+    );
+    renderer.renderFrame(0, 0.25);
+
+    expect(renderer.targetCount).toBe(2);
+    expect(gl.draws).toHaveLength(4);
+  });
+});
+
+describe('a document reopened after a reload', () => {
+  /**
+   * State is per-session and never persisted, so a reopened document starts
+   * from what the manifest declares. That is what the specification asks for —
+   * correct for drifting motion, and worth knowing before someone expects a
+   * saved arrangement to come back where they left it.
+   */
+  const drifting = manifestWith({
+    id: 'drifting',
+    parameters: [],
+    presets: [{ id: 'default', name: 'Default', values: {} }],
+    simulation: {
+      schema: [
+        {
+          name: 'travelled',
+          label: 'Travelled',
+          type: 'number',
+          defaultValue: 0,
+          min: 0,
+          max: 1000,
+          step: 0.001,
+        },
+      ],
+      initial: { travelled: 0 },
+      advance: (previous, context) => ({
+        travelled: (previous['travelled'] as number) + context.dt,
+      }),
+    },
+  });
+
+  it('starts from the declared initial state rather than where it was left', () => {
+    registry.register(drifting);
+
+    const before = createRenderer();
+    before.setScene(scene(item({ shaderId: 'drifting' })));
+    for (let frame = 0; frame < 10; frame += 1) before.renderFrame(frame, 1);
+    expect(gl.lastWriteTo('travelled')?.value).toBeCloseTo(10, 5);
+    before.dispose();
+
+    // The same document, opened again: a new surface over the same scene.
+    gl.reset();
+    const after = createRenderer();
+    after.setScene(scene(item({ shaderId: 'drifting' })));
+    after.renderFrame(0, 1);
+
+    expect(gl.lastWriteTo('travelled')?.value).toBeCloseTo(1, 5);
+  });
+});
+
 describe('targets follow the object', () => {
   it('sizes a target to the object, in drawing-buffer pixels', () => {
     const renderer = createRenderer({ devicePixelRatio: () => 1 });
