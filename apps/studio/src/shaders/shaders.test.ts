@@ -105,15 +105,25 @@ describe('a repeatable group matches what its shader allocates', () => {
 });
 
 describe('the library listing', () => {
-  it('offers an entry for every preset of every shader it lists', () => {
-    const entries = offered.flatMap((manifest) =>
-      manifest.presets.map((preset) => `${manifest.id}:${preset.id}`),
-    );
+  it('offers exactly one entry per shader', () => {
+    const entries = offered.map((manifest) => manifest.id);
 
-    expect(entries.length).toBe(
-      offered.reduce((total, manifest) => total + manifest.presets.length, 0),
-    );
+    expect(entries.length).toBe(offered.length);
     expect(new Set(entries).size).toBe(entries.length);
+  });
+
+  it('labels each entry with a name unique in the listing', () => {
+    // Preset names collide across shaders — "Ember" belongs to three. Shader
+    // names are what the listing shows, so those are what must be distinct.
+    const names = offered.map((manifest) => manifest.name);
+
+    expect(new Set(names).size, `duplicate names: ${names.join(', ')}`).toBe(names.length);
+  });
+
+  it('gives every listed shader a preset to apply', () => {
+    for (const manifest of offered) {
+      expect(manifest.presets[0], `${manifest.id} has no first preset`).toBeDefined();
+    }
   });
 
   it('hides shaders that serve the application own rendering', () => {
@@ -133,9 +143,12 @@ describe('the library listing', () => {
 });
 
 describe('a library entry previews its colours', () => {
-  const entries = offered.flatMap((manifest) =>
-    manifest.presets.map((preset) => ({ id: `${manifest.id}:${preset.id}`, manifest, preset })),
-  );
+  // An entry previews the shader's first preset, which is what choosing it applies.
+  const entries = offered.map((manifest) => ({
+    id: manifest.id,
+    manifest,
+    preset: manifest.presets[0]!,
+  }));
 
   it.each(entries)('$id previews something visible', ({ manifest, preset }) => {
     const preview = swatchFor(manifest, preset);
