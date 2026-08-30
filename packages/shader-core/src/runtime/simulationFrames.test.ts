@@ -137,3 +137,73 @@ describe('a shader whose motion is only in its advance', () => {
     expect(gl.lastWriteTo('travelled')?.value).toBe(0);
   });
 });
+
+describe('the view moves while the work keeps running', () => {
+  it('steps the simulation by real time throughout a pan', () => {
+    loop.reconcile();
+
+    // A pan of one step per frame, for a second of frames.
+    for (let frame = 0; frame < 60; frame += 1) {
+      renderer.setViewport({ zoom: 1, panX: -frame * 4, panY: frame });
+      host.run(1, 1000 / 60);
+    }
+
+    // Moving the view is not time passing, and not time standing still either.
+    expect(gl.lastWriteTo('travelled')?.value).toBeCloseTo(1, 1);
+  });
+
+  it('steps it by the same amount whether the view moves or not', () => {
+    loop.reconcile();
+    // The loop's first tick has no previous timestamp to measure against, so
+    // it advances nothing. Primed here, both halves count the same frames.
+    host.run(1, 1000 / 60);
+
+    const start = gl.lastWriteTo('travelled')?.value as number;
+    host.run(30, 1000 / 60);
+    const still = (gl.lastWriteTo('travelled')?.value as number) - start;
+
+    const before = gl.lastWriteTo('travelled')?.value as number;
+    for (let frame = 0; frame < 30; frame += 1) {
+      renderer.setViewport({ zoom: 1 + frame * 0.1, panX: -frame * 7, panY: 0 });
+      host.run(1, 1000 / 60);
+    }
+    const moved = (gl.lastWriteTo('travelled')?.value as number) - before;
+
+    expect(moved).toBeCloseTo(still, 5);
+  });
+
+  it('moves what it draws while it draws it', () => {
+    loop.reconcile();
+    host.run(1, 1000 / 60);
+    const before = [...(gl.lastWriteTo('uModel')?.value as number[])];
+
+    renderer.setViewport({ zoom: 3, panX: -220, panY: 90 });
+    host.run(1, 1000 / 60);
+    const after = [...(gl.lastWriteTo('uModel')?.value as number[])];
+
+    expect(after).not.toEqual(before);
+  });
+
+  it('tells the shader the same object size throughout', () => {
+    loop.reconcile();
+
+    const sizes = new Set<string>();
+    for (let frame = 0; frame < 20; frame += 1) {
+      renderer.setViewport({ zoom: 0.5 + frame * 0.4, panX: -frame * 12, panY: frame * 3 });
+      host.run(1, 1000 / 60);
+      sizes.add(JSON.stringify(gl.lastWriteTo('uResolution')?.value));
+    }
+
+    // One size, whatever the magnification: the artwork is magnified, not
+    // redrawn at a different scale.
+    expect(sizes.size).toBe(1);
+  });
+
+  it('keeps requesting frames while the view moves', () => {
+    loop.reconcile();
+    renderer.setViewport({ zoom: 2, panX: -50, panY: -50 });
+    host.run(10, 1000 / 60);
+
+    expect(loop.isRunning).toBe(true);
+  });
+});

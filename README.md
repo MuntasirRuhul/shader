@@ -222,13 +222,48 @@ and no JavaScript on the styling path.
 | `Delete`        | Remove the selection                             |
 | `Escape`        | Clear the selection                              |
 | `Cmd/Ctrl + Z`  | Undo — `Shift` to redo                           |
-| `Shift + 1`     | Fit the content into view                        |
+| `Shift + 1`     | Fit every visible object into view               |
+| `Shift + 2`     | Frame the selection                              |
 | `Shift + 0`     | Return to actual size                            |
 | Scroll          | Pan — hold `Cmd/Ctrl` to zoom                    |
+| `Space` + drag  | Pan, whatever tool is active                     |
 | `Alt` + drag    | Pan from anywhere                                |
 
 Every canvas shortcut is suppressed while a text field has focus, so a bare
-letter never fires mid-word.
+letter never fires mid-word. Space is the sharpest case of that rule: it pans
+the canvas, and types a space into a text object being edited.
+
+## The canvas
+
+The canvas is unbounded. Objects store canvas coordinates, and panning and
+zooming are properties of the view — nothing an object holds changes when you
+move around it.
+
+Everything the canvas shows is placed by that one view. That is worth stating
+because it was once not true: the overlays were positioned through the viewport
+and the shader layer was not, so the artwork separated from its own selection
+box by exactly the pan and exactly the zoom. It agreed at 100% with no pan,
+which is why it survived so long.
+
+The view is applied where placement is still computed in double precision,
+before it reaches the single-precision matrix the vertex stage reads. That is
+what lets an object a million units from the origin be inspected at high
+magnification without jittering: the large terms cancel before anything is
+narrowed. Done on the graphics side they would not.
+
+Zooming magnifies the work rather than redrawing it at another scale. A shader
+is told its object's size in canvas pixels whatever the magnification, and the
+fragment stage is evaluated per screen pixel — so an object is re-rendered as
+you close in, not enlarged. Text masks are rasterized for the current
+magnification for the same reason.
+
+Behind it all is a ground of dots that follows the view, so panning across
+empty space reads as movement. Its spacing steps by powers of two as
+magnification crosses thresholds, which keeps it legible instead of collapsing
+into a field or thinning to nothing. It is CSS beneath the transparent canvas,
+not something the renderer draws: in the shader layer it would be a
+full-surface pass every frame on a canvas whose whole idle strategy is to stop
+drawing when nothing moves.
 
 ## Requirements
 

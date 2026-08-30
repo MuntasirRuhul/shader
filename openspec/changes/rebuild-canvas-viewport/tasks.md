@@ -15,7 +15,7 @@
 
 ## 3. Supply the viewport from the application
 
-- [ ] 3.1 Pass the viewport from the editor's state to the renderer, replacing the bare magnification the canvas hook takes today; verify a pan and a zoom both reach the renderer
+- [x] 3.1 Pass the viewport from the editor's state to the renderer, replacing the bare magnification the canvas hook takes today; verify a pan and a zoom both reach the renderer
 - [x] 3.2 Verify an object's drawn region and its selection indicator coincide at a panned view, at a magnified view, and at both — the defect this change exists to close
 - [x] 3.3 Verify the same for a text object and its editor, which is positioned by the viewport independently
 
@@ -34,7 +34,7 @@
 
 ## 6. Verify the whole
 
-- [ ] 6.1 Verify every shipped shader is unchanged in appearance at the identity view, since none of them knows the view exists
-- [ ] 6.2 Verify an animated shader and a shader owning state both keep running correctly while the view is panned and magnified, with the simulation stepping by real time throughout
-- [ ] 6.3 Verify in the browser that an object stays under its selection box through a pan, a zoom, and a rotation, and that a shader-filled object magnifies sharply rather than blurring
+- [x] 6.1 Verify every shipped shader is unchanged in appearance at the identity view, since none of them knows the view exists
+- [x] 6.2 Verify an animated shader and a shader owning state both keep running correctly while the view is panned and magnified, with the simulation stepping by real time throughout
+- [x] 6.3 Verify in the browser that an object stays under its selection box through a pan, a zoom, and a rotation, and that a shader-filled object magnifies sharply rather than blurring
 - [ ] 6.4 Verify the full root script set passes on a clean checkout, and update the README's canvas section to describe panning, framing, and the ground

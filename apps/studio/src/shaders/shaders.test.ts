@@ -1,5 +1,8 @@
 import {
+  buildModelMatrix,
   declareUniforms,
+  IDENTITY_VIEWPORT,
+  RESERVED_UNIFORMS,
   isGroupParameter,
   resolvePreset,
   SOLID_FILL_SHADER_ID,
@@ -273,5 +276,43 @@ describe('a library entry previews its colours', () => {
     };
 
     expect(swatchFor(colourless, colourless.presets[0]!)).toContain('var(--sb-');
+  });
+});
+
+describe('no shipped shader knows the view exists', () => {
+  // The view is the runtime's business. A shader that read it would behave
+  // differently depending on where it happened to be looked at from, which is
+  // the coupling `vUv` exists to remove.
+  it.each(catalogue)('$id reads no viewport, pan, or zoom', (manifest) => {
+    const sources = [
+      manifest.fragmentSource,
+      ...(manifest.passes ?? []).map((pass) => pass.fragmentSource),
+    ].join('\n');
+
+    expect(sources).not.toMatch(/\bu_?viewport\b/i);
+    expect(sources).not.toMatch(/\bu_?pan\b/i);
+    expect(sources).not.toMatch(/\bu_?zoom\b/i);
+  });
+
+  it('places an object identically with the identity view and with none', () => {
+    // The migration, stated as an equality: supplying the identity view is
+    // exactly what the runtime did before views existed.
+    const transform = { x: 140, y: 90, width: 320, height: 200, rotation: 0.35 };
+
+    const before = buildModelMatrix(transform, 1200, 800);
+    const after = buildModelMatrix(transform, 1200, 800, IDENTITY_VIEWPORT);
+
+    expect([...after]).toEqual([...before]);
+  });
+
+  it('leaves the reserved uniform set untouched', () => {
+    // Nothing was added for shaders to read: the view never reaches them.
+    expect(Object.values(RESERVED_UNIFORMS).sort()).toEqual([
+      'uHasMask',
+      'uMask',
+      'uOpacity',
+      'uResolution',
+      'uTime',
+    ]);
   });
 });
