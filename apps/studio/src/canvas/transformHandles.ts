@@ -8,7 +8,30 @@ import { centreOf, type CanvasObject, type Point, type Rect } from '@shader/core
  * rather than drift.
  */
 
-export const HANDLE_POSITIONS = ['top-left', 'top-right', 'bottom-right', 'bottom-left'] as const;
+/**
+ * Where an object can be taken hold of to resize it.
+ *
+ * Corners change both dimensions at once; edges change one and leave the other
+ * alone. Corners alone force every width change to be a height change too,
+ * which is the thing that makes resizing feel like a fight.
+ */
+export const HANDLE_POSITIONS = [
+  'top-left',
+  'top',
+  'top-right',
+  'right',
+  'bottom-right',
+  'bottom',
+  'bottom-left',
+  'left',
+] as const;
+
+/** The handles that change only one dimension. */
+export const EDGE_HANDLES = ['top', 'right', 'bottom', 'left'] as const;
+
+export function isEdgeHandle(handle: HandlePosition): boolean {
+  return (EDGE_HANDLES as readonly string[]).includes(handle);
+}
 
 export type HandlePosition = (typeof HANDLE_POSITIONS)[number];
 
@@ -20,15 +43,28 @@ export const ROTATE_HANDLE_OFFSET = 24;
 
 /** Where a handle sits, in canvas coordinates. */
 export function handlePoint(bounds: Rect, handle: HandlePosition): Point {
+  const midX = bounds.x + bounds.width / 2;
+  const midY = bounds.y + bounds.height / 2;
+  const right = bounds.x + bounds.width;
+  const bottom = bounds.y + bounds.height;
+
   switch (handle) {
     case 'top-left':
       return { x: bounds.x, y: bounds.y };
+    case 'top':
+      return { x: midX, y: bounds.y };
     case 'top-right':
-      return { x: bounds.x + bounds.width, y: bounds.y };
+      return { x: right, y: bounds.y };
+    case 'right':
+      return { x: right, y: midY };
     case 'bottom-right':
-      return { x: bounds.x + bounds.width, y: bounds.y + bounds.height };
+      return { x: right, y: bottom };
+    case 'bottom':
+      return { x: midX, y: bottom };
     case 'bottom-left':
-      return { x: bounds.x, y: bounds.y + bounds.height };
+      return { x: bounds.x, y: bottom };
+    case 'left':
+      return { x: bounds.x, y: midY };
   }
 }
 
@@ -36,9 +72,13 @@ export function handlePoint(bounds: Rect, handle: HandlePosition): Point {
 export function anchorFor(bounds: Rect, handle: HandlePosition): Point {
   const opposite: Record<HandlePosition, HandlePosition> = {
     'top-left': 'bottom-right',
+    top: 'bottom',
     'top-right': 'bottom-left',
+    right: 'left',
     'bottom-right': 'top-left',
+    bottom: 'top',
     'bottom-left': 'top-right',
+    left: 'right',
   };
   return handlePoint(bounds, opposite[handle]);
 }
@@ -64,6 +104,26 @@ export function resizeFromHandle(
 ): Rect {
   const minSize = options.minSize ?? 1;
   const anchor = anchorFor(bounds, handle);
+
+  // An edge moves one side and leaves the other where it is.
+  if (handle === 'left' || handle === 'right') {
+    const width = Math.max(minSize, Math.abs(pointer.x - anchor.x));
+    return {
+      x: pointer.x < anchor.x ? anchor.x - width : anchor.x,
+      y: bounds.y,
+      width,
+      height: bounds.height,
+    };
+  }
+  if (handle === 'top' || handle === 'bottom') {
+    const height = Math.max(minSize, Math.abs(pointer.y - anchor.y));
+    return {
+      x: bounds.x,
+      y: pointer.y < anchor.y ? anchor.y - height : anchor.y,
+      width: bounds.width,
+      height,
+    };
+  }
 
   let width = Math.abs(pointer.x - anchor.x);
   let height = Math.abs(pointer.y - anchor.y);

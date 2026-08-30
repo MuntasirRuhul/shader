@@ -1,7 +1,7 @@
 import { unionBounds } from '../canvas/geometry';
 import type { ParameterValues } from '../registry/parameterSchema';
 import type { BlendMode } from './blendMode';
-import { inStackingOrder } from './containment';
+import { ancestorsOf, inStackingOrder, refitAncestors, refitContainer } from './containment';
 import {
   isShaderFill,
   nextObjectId,
@@ -90,10 +90,22 @@ export function removeObjects(
   const removing = new Set(objectIds);
   if (removing.size === 0) return document;
 
-  return {
+  // The containers what is going belonged to, before it goes.
+  const containers = [
+    ...new Set(
+      [...removing].flatMap((objectId) =>
+        ancestorsOf(document, objectId).map((container) => container.id),
+      ),
+    ),
+  ];
+
+  const remaining: CanvasDocument = {
     ...document,
     objects: document.objects.filter((object) => !removing.has(object.id)),
   };
+
+  // Closing over what is left, so a group shrinks when part of it is deleted.
+  return containers.reduce((next, containerId) => refitContainer(next, containerId), remaining);
 }
 
 /**
@@ -121,7 +133,9 @@ export function updateObject(
 
   const objects = [...document.objects];
   objects[index] = { ...existing, ...changes };
-  return { ...document, objects };
+
+  // A group is a handle on its contents, so changing one changes the group.
+  return refitAncestors({ ...document, objects }, objectId);
 }
 
 export function setFill(document: CanvasDocument, objectId: string, fill: Fill): CanvasDocument {

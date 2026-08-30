@@ -65,6 +65,22 @@
   cursor: nesw-resize;
 }
 
+/* An edge handle is a grip on a side, so it reads as a bar rather than a
+   corner point — and stays out of the way of the corners beside it. */
+.handle[data-handle='left'],
+.handle[data-handle='right'] {
+  width: var(--sb-space-3);
+  height: var(--sb-space-7);
+  cursor: ew-resize;
+}
+
+.handle[data-handle='top'],
+.handle[data-handle='bottom'] {
+  width: var(--sb-space-7);
+  height: var(--sb-space-3);
+  cursor: ns-resize;
+}
+
 .rotateHandle {
   border-radius: var(--sb-radius-full);
   cursor: grab;

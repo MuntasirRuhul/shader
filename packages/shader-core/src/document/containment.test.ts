@@ -19,7 +19,7 @@ import {
   type CanvasObject,
   type FrameObject,
 } from './model';
-import { groupObjects, removeObjects, ungroupObject } from './operations';
+import { groupObjects, removeObjects, ungroupObject, updateObject } from './operations';
 
 /**
  * Containment, which is a link on a flat list rather than nested arrays.
@@ -33,9 +33,14 @@ const a = createRectangle({ id: 'a', x: 100, y: 100, width: 50, height: 50 });
 const b = createRectangle({ id: 'b', x: 200, y: 180, width: 50, height: 40 });
 const loose = createRectangle({ id: 'loose', x: 600, y: 600, width: 20, height: 20 });
 
+/** As the Group command makes one: a handle on its contents, not a window. */
 function grouped(overrides: Partial<FrameObject> = {}): CanvasDocument {
   const document = createDocument({ objects: [a, b, loose] });
-  return groupObjects(document, ['a', 'b'], createFrame({ id: 'g', ...overrides }));
+  return groupObjects(
+    document,
+    ['a', 'b'],
+    createFrame({ id: 'g', clipsContent: false, ...overrides }),
+  );
 }
 
 describe('putting objects into a container', () => {
@@ -249,5 +254,64 @@ describe('a document with containers survives being saved', () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.document.objects[0]?.id).toBe('a');
+  });
+});
+
+describe('a group follows what is in it', () => {
+  const grow = (document: CanvasDocument, id: string, changes: Record<string, number>) =>
+    updateObject(document, id, changes);
+
+  it('grows when a member grows', () => {
+    // Editing text inside a group makes it taller. A group left at its old
+    // size then outlines a shape that is no longer there.
+    const taller = grow(grouped(), 'b', { height: 200 });
+    const container = taller.objects.find((object) => object.id === 'g');
+
+    expect(container?.height).toBeGreaterThan(120);
+  });
+
+  it('shrinks when a member shrinks', () => {
+    const smaller = grow(grouped(), 'b', { width: 10, height: 10 });
+    const container = smaller.objects.find((object) => object.id === 'g');
+
+    expect(container?.width).toBeLessThan(150);
+  });
+
+  it('follows a member that is moved out past its edge', () => {
+    const moved = grow(grouped(), 'b', { x: 300 });
+    const container = moved.objects.find((object) => object.id === 'g');
+
+    expect(container?.width).toBe(350);
+  });
+
+  it('leaves every member exactly where it was on screen', () => {
+    const before = grouped();
+    const after = grow(before, 'b', { x: 300 });
+
+    const placedIn = (document: CanvasDocument, id: string) =>
+      absolutePlacement(document, document.objects.find((o) => o.id === id) as CanvasObject);
+
+    // The container's origin moved, so members shifted against it by the same
+    // amount — the one that was not touched must not have moved at all.
+    expect(placedIn(after, 'a')).toMatchObject(placedIn(before, 'a'));
+  });
+
+  it('closes up when part of it is deleted', () => {
+    const document = removeObjects(grouped(), ['b']);
+    const container = document.objects.find((object) => object.id === 'g');
+
+    expect(container).toMatchObject({ width: 50, height: 50 });
+  });
+
+  it('leaves a frame alone, since a frame is a region and not a handle', () => {
+    // A frame is a window onto an area; its bounds are the point of it.
+    const framed = groupObjects(
+      createDocument({ objects: [a, b] }),
+      ['a', 'b'],
+      createFrame({ id: 'f', clipsContent: true }),
+    );
+    const grown = grow(framed, 'b', { height: 400 });
+
+    expect(grown.objects.find((object) => object.id === 'f')?.height).toBe(120);
   });
 });

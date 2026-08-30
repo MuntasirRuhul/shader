@@ -154,3 +154,87 @@ export function inStackingOrder(objects: readonly CanvasObject[]): CanvasObject[
 
   return ordered;
 }
+
+/**
+ * A container resized to hold exactly what is in it.
+ *
+ * A group is a handle on its contents, so its bounds are a consequence of them
+ * rather than a thing of their own: edit the text inside one and the group has
+ * to follow, or its outline and everything measured from it describe a shape
+ * that is no longer there.
+ *
+ * Members keep their place on screen. The container's origin moves, so each
+ * member's offset moves against it by the same amount — and because a
+ * container turns about its own centre, moving that centre has to be undone in
+ * the container's placement or everything inside it would swing.
+ */
+export function refitContainer(document: CanvasDocument, containerId: string): CanvasDocument {
+  const container = document.objects.find((object) => object.id === containerId);
+  if (!container || container.type !== 'frame') return document;
+
+  // A frame is a window onto a region and keeps the bounds it was given. Only
+  // a group, which is nothing but a handle, follows its contents.
+  if (container.clipsContent) return document;
+
+  const members = childrenOf(document, containerId);
+  if (members.length === 0) return document;
+
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+
+  for (const member of members) {
+    minX = Math.min(minX, member.x);
+    minY = Math.min(minY, member.y);
+    maxX = Math.max(maxX, member.x + member.width);
+    maxY = Math.max(maxY, member.y + member.height);
+  }
+
+  const width = Math.max(1, maxX - minX);
+  const height = Math.max(1, maxY - minY);
+  if (minX === 0 && minY === 0 && width === container.width && height === container.height) {
+    return document;
+  }
+
+  // Where the centre was, and where it would be, in the container's own space.
+  const centre = { x: container.width / 2, y: container.height / 2 };
+  const nextCentre = { x: width / 2, y: height / 2 };
+  const cos = Math.cos(container.rotation);
+  const sin = Math.sin(container.rotation);
+
+  const shift = {
+    x: nextCentre.x - centre.x + minX,
+    y: nextCentre.y - centre.y + minY,
+  };
+  const placement = {
+    x: container.x + centre.x - nextCentre.x + (shift.x * cos - shift.y * sin),
+    y: container.y + centre.y - nextCentre.y + (shift.x * sin + shift.y * cos),
+  };
+
+  return {
+    ...document,
+    objects: document.objects.map((object) => {
+      if (object.id === containerId) {
+        return { ...object, x: placement.x, y: placement.y, width, height };
+      }
+      if (object.parentId === containerId) {
+        return { ...object, x: object.x - minX, y: object.y - minY };
+      }
+      return object;
+    }),
+  };
+}
+
+/**
+ * Resizes every container above an object to hold what it now holds.
+ *
+ * Applied from the inside out, since a container's own size is what the one
+ * above it has to accommodate.
+ */
+export function refitAncestors(document: CanvasDocument, objectId: string): CanvasDocument {
+  return ancestorsOf(document, objectId).reduce(
+    (next, container) => refitContainer(next, container.id),
+    document,
+  );
+}
