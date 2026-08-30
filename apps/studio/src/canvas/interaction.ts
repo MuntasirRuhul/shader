@@ -2,6 +2,7 @@ import {
   absolutePlacement,
   ancestorsOf,
   boundsOf,
+  isWithin,
   outermostOf,
   objectAt,
   objectsWithin,
@@ -123,11 +124,7 @@ export function onPointerDown(context: PointerDownContext): PointerDownResult {
   }
 
   const hit = objectAt(document, point);
-  // Clicking what a group holds selects the group. Reaching the thing itself
-  // is a deliberate second act, not something a stray click does.
-  const target = hit
-    ? (document.objects.find((object) => object.id === outermostOf(document, hit.id)) ?? hit)
-    : undefined;
+  const target = targetOf(document, selection, hit);
 
   if (!target) {
     // Empty canvas: begin a marquee, and clear unless adding to a selection.
@@ -152,6 +149,30 @@ export function onPointerDown(context: PointerDownContext): PointerDownResult {
     },
     selection: nextSelection,
   };
+}
+
+/**
+ * What a click actually selects.
+ *
+ * Clicking what a group holds selects the group: reaching the thing itself is
+ * deliberate. But once inside a group, clicks stay inside it — otherwise every
+ * press would throw you back out, and nothing within a group could be worked
+ * on at all.
+ */
+function targetOf(
+  document: CanvasDocument,
+  selection: Selection,
+  hit: CanvasObject | undefined,
+): CanvasObject | undefined {
+  if (!hit) return undefined;
+
+  const outermost = outermostOf(document, hit.id);
+  const entered = selection.some(
+    (objectId) => objectId !== outermost && isWithin(document, objectId, outermost),
+  );
+
+  if (entered && isWithin(document, hit.id, outermost)) return hit;
+  return document.objects.find((object) => object.id === outermost) ?? hit;
 }
 
 function toggleWithin(selection: Selection, objectId: string): Selection {

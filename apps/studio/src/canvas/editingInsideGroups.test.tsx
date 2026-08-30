@@ -6,11 +6,13 @@ import {
   groupObjects,
   type CanvasDocument,
 } from '@shader/core';
-import { render, screen } from '@testing-library/react';
+import { act, render, renderHook, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import type { EditorState } from '../store/editorStore';
 import { INITIAL_VIEWPORT } from '../store/slices';
-import { movedPositions, previewBounds, type Gesture } from './interaction';
+import { movedPositions, onPointerDown, previewBounds, type Gesture } from './interaction';
 import { TextEditor } from './TextEditor';
+import { useCanvasPointer, type CanvasPointerHandlers } from './useCanvasPointer';
 
 /**
  * Working on something that lives inside a group.
@@ -114,5 +116,134 @@ describe('dragging something inside a group', () => {
     const flat = createDocument({ objects: [text] });
 
     expect(movedPositions(dragBy(10, 10), flat).get('t')).toEqual({ x: 10, y: 210 });
+  });
+});
+
+describe('a click does not throw you back out of a group', () => {
+  const start = (selection: string[]) =>
+    onPointerDown({
+      tool: 'select',
+      shape: 'rectangle',
+      point: { x: 950, y: 720 },
+      document: withGroup(),
+      selection,
+      additive: false,
+      panning: false,
+    });
+
+  it('selects the group when nothing inside it is selected', () => {
+    expect(start([]).selection).toEqual(['g']);
+  });
+
+  it('keeps the member selected once you are inside', () => {
+    // Without this the press that precedes a double-click reselects the group,
+    // so the double-click never sees the member as already chosen and editing
+    // can never begin — which is exactly how it failed.
+    expect(start(['t']).selection).toEqual(['t']);
+  });
+
+  it('reaches a sibling directly once you are inside', () => {
+    const result = onPointerDown({
+      tool: 'select',
+      shape: 'rectangle',
+      point: { x: 1000, y: 550 },
+      document: withGroup(),
+      selection: ['t'],
+      additive: false,
+      panning: false,
+    });
+
+    expect(result.selection).toEqual(['r']);
+  });
+
+  it('goes back to the group once nothing inside it is selected', () => {
+    expect(start(['g']).selection).toEqual(['g']);
+  });
+});
+
+describe('reaching grouped text with the pointer, end to end', () => {
+  const beginTextEditing = vi.fn();
+  const selectMany = vi.fn();
+  const select = vi.fn();
+  let selection: string[] = [];
+  const document_ = withGroup();
+
+  function store() {
+    return {
+      document: document_,
+      selection,
+      viewport: INITIAL_VIEWPORT,
+      tool: { active: 'select', shape: 'rectangle', editingTextId: null },
+      select: (id: string) => {
+        select(id);
+        selection = [id];
+      },
+      selectMany: (ids: string[]) => {
+        selectMany(ids);
+        selection = ids;
+      },
+      beginTextEditing,
+      panBy: vi.fn(),
+      addObject: vi.fn(),
+      updateObject: vi.fn(),
+      edit: vi.fn(),
+      setTool: vi.fn(),
+    } as unknown as EditorState;
+  }
+
+  const at = (x: number, y: number) =>
+    ({
+      pointerId: 1,
+      button: 0,
+      clientX: x,
+      clientY: y,
+      shiftKey: false,
+      altKey: false,
+      currentTarget: {
+        setPointerCapture: vi.fn(),
+        hasPointerCapture: vi.fn(() => true),
+        releasePointerCapture: vi.fn(),
+        getBoundingClientRect: () => ({ left: 0, top: 0, width: 2000, height: 1200 }),
+      },
+      target: { dataset: {} },
+    }) as never;
+
+  function doubleClickAt(result: { current: CanvasPointerHandlers }, x: number, y: number) {
+    for (let press = 0; press < 2; press += 1) {
+      act(() => {
+        result.current.onPointerDown(at(x, y));
+      });
+      act(() => {
+        result.current.onPointerUp(at(x, y));
+      });
+    }
+    act(() => {
+      result.current.onDoubleClick(at(x, y));
+    });
+  }
+
+  it('takes two double-clicks: one to enter the group, one to edit', () => {
+    vi.clearAllMocks();
+    selection = [];
+    const { result } = renderHook(() => useCanvasPointer(store));
+
+    // Over the text, which sits inside the group.
+    doubleClickAt(result, 950, 720);
+    expect(selection).toEqual(['t']);
+    expect(beginTextEditing).not.toHaveBeenCalled();
+
+    doubleClickAt(result, 950, 720);
+    expect(beginTextEditing).toHaveBeenCalledWith('t');
+  });
+
+  it('opens text that is not in a group on the first double-click', () => {
+    vi.clearAllMocks();
+    selection = [];
+    const flat = createDocument({ objects: [text] });
+    const { result } = renderHook(() => useCanvasPointer(() => ({ ...store(), document: flat })));
+
+    doubleClickAt(result, 950, 720);
+
+    expect(beginTextEditing).toHaveBeenCalledWith('t');
   });
 });
