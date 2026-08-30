@@ -1,7 +1,7 @@
 import type { CanvasDocument, Rect } from '@shader/core';
 import type { Selection } from '../store/selection';
 import type { ViewportState } from '../store/slices';
-import { gestureRect, selectionBounds, type Gesture } from './interaction';
+import { gestureRect, previewBounds, type Gesture } from './interaction';
 import styles from './SelectionOverlay.module.css';
 import { HANDLE_POSITIONS, handlePoint, ROTATE_HANDLE_OFFSET } from './transformHandles';
 import { canvasRectToScreen, canvasToScreen } from './viewport';
@@ -27,7 +27,8 @@ export function SelectionOverlay({
   gesture,
   constrain,
 }: SelectionOverlayProps) {
-  const bounds = selectionBounds(document, selection);
+  // Follows a drag in progress, so the indicator moves with what it describes.
+  const bounds = previewBounds(document, selection, gesture, constrain);
   const preview = gestureRect(gesture, constrain);
   const showHandles = selection.length === 1 && gesture.kind !== 'marquee';
 

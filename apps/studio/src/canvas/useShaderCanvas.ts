@@ -14,6 +14,14 @@ import { transientChannel, type TransientEdit } from '../store/transientChannel'
 import { buildScene } from './buildScene';
 import { TextMaskCache } from './textRasterizer';
 
+/** The object properties a canvas drag changes, as opposed to shader values. */
+const TRANSFORM_KEYS = ['x', 'y', 'width', 'height', 'rotation'] as const;
+type TransformKey = (typeof TRANSFORM_KEYS)[number];
+
+function isTransformKey(key: string): key is TransformKey {
+  return (TRANSFORM_KEYS as readonly string[]).includes(key);
+}
+
 export interface ShaderCanvasOptions {
   readonly document: CanvasDocument;
   readonly registry: Pick<ShaderRegistry, 'get'>;
@@ -82,16 +90,23 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
     if (pending.length === 0) return scene;
 
     // A drag in progress has not reached the document, so its values are laid
-    // over the scene here — which is what makes the canvas follow the control
-    // without a store write per pointer move.
+    // over the scene here — which is what makes the canvas follow the pointer
+    // without a store write per move.
     return {
       items: scene.items.map((item) => {
         const overrides = pending.filter((edit) => edit.objectId === item.objectId);
         if (overrides.length === 0) return item;
 
+        // Dragging an object changes where it is; dragging a control changes
+        // what it draws. The two land in different places.
         const values = { ...item.values };
-        for (const edit of overrides) values[edit.key] = edit.value as never;
-        return { ...item, values };
+        const transform = { ...item.transform };
+        for (const edit of overrides) {
+          if (isTransformKey(edit.key)) transform[edit.key] = edit.value as number;
+          else values[edit.key] = edit.value as never;
+        }
+
+        return { ...item, values, transform };
       }),
     };
   }, []);

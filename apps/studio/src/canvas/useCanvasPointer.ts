@@ -17,8 +17,10 @@ import {
   type WheelEvent,
 } from 'react';
 import type { EditorState } from '../store/editorStore';
+import { transientChannel } from '../store/transientChannel';
 import {
   cursorFor,
+  gestureChanges,
   hasMoved,
   IDLE,
   marqueeSelection,
@@ -52,6 +54,20 @@ export interface CanvasPointerHandlers {
  * local state driving the overlay, which is what keeps a drag off the history
  * and off React's document-level re-render path.
  */
+/** The gestures that change an object, and so must be shown while they happen. */
+const MOVES_AN_OBJECT = new Set<Gesture['kind']>(['move', 'resize', 'rotate']);
+
+/** Publishes a gesture's current values for the canvas to draw immediately. */
+function publish(gesture: Gesture, document: CanvasDocument, constrain: boolean): void {
+  if (!transientChannel.isDragging) return;
+
+  for (const { objectId, changes } of gestureChanges(gesture, document, constrain)) {
+    for (const [key, value] of Object.entries(changes)) {
+      transientChannel.push({ objectId, key, value });
+    }
+  }
+}
+
 export function useCanvasPointer(store: () => EditorState): CanvasPointerHandlers {
   const [gesture, setGesture] = useState<Gesture>(IDLE);
   const [constrain, setConstrain] = useState(false);
@@ -157,6 +173,11 @@ export function useCanvasPointer(store: () => EditorState): CanvasPointerHandler
       });
 
       if (result.selection) state.selectMany(result.selection);
+
+      // A move, resize, or rotation is published as it happens, so the canvas
+      // follows the pointer instead of jumping when it is released.
+      if (MOVES_AN_OBJECT.has(result.gesture.kind)) transientChannel.begin();
+
       setGesture(result.gesture);
       setConstrain(event.shiftKey);
     },
@@ -186,7 +207,10 @@ export function useCanvasPointer(store: () => EditorState): CanvasPointerHandler
         const offset = panOffset(next);
         state.panBy(offset.x, offset.y);
         setGesture({ ...next, origin: next.current });
+        return;
       }
+
+      publish(next, state.document, event.shiftKey);
     },
     [pointOf, store],
   );
@@ -194,6 +218,8 @@ export function useCanvasPointer(store: () => EditorState): CanvasPointerHandler
   const handleUp = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
       const element = event.currentTarget;
+
+      if (transientChannel.isDragging) transientChannel.end();
 
       if (abandonedRef.current) {
         abandonedRef.current = false;

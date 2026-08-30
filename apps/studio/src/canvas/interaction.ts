@@ -245,6 +245,77 @@ export function selectionBounds(document: CanvasDocument, selection: Selection):
   return unionBounds(document.objects.filter((object) => chosen.has(object.id)));
 }
 
+/**
+ * The changes a gesture has made so far, as object properties.
+ *
+ * A drag has to be visible while it is happening. These are the same values
+ * the release commits, published continuously so the canvas and the selection
+ * indicator both follow the pointer instead of waiting for it to be let go.
+ */
+export function gestureChanges(
+  gesture: Gesture,
+  document: CanvasDocument,
+  constrain = false,
+): { objectId: string; changes: Record<string, number> }[] {
+  switch (gesture.kind) {
+    case 'move':
+      return [...movedPositions(gesture)].map(([objectId, position]) => ({
+        objectId,
+        changes: { x: position.x, y: position.y },
+      }));
+
+    case 'resize': {
+      const bounds = resizedBounds(gesture, constrain);
+      if (!bounds) return [];
+      return [
+        {
+          objectId: gesture.objectId,
+          changes: {
+            x: bounds.x,
+            y: bounds.y,
+            width: bounds.width,
+            height: bounds.height,
+          },
+        },
+      ];
+    }
+
+    case 'rotate': {
+      const rotation = rotatedAngle(gesture, document);
+      if (rotation === undefined) return [];
+      return [{ objectId: gesture.objectId, changes: { rotation } }];
+    }
+
+    default:
+      return [];
+  }
+}
+
+/**
+ * The bounds to indicate, following a gesture in progress.
+ *
+ * The document does not change until a drag is released, so an indicator drawn
+ * from it alone would sit still while the object it describes moves.
+ */
+export function previewBounds(
+  document: CanvasDocument,
+  selection: Selection,
+  gesture: Gesture,
+  constrain = false,
+): Rect | undefined {
+  const changes = gestureChanges(gesture, document, constrain);
+  if (changes.length === 0) return selectionBounds(document, selection);
+
+  const byId = new Map(changes.map((change) => [change.objectId, change.changes]));
+  const chosen = new Set(selection);
+
+  return unionBounds(
+    document.objects
+      .filter((object) => chosen.has(object.id))
+      .map((object) => ({ ...object, ...byId.get(object.id) })),
+  );
+}
+
 /** The cursor the canvas should show, given what is under the pointer. */
 export function cursorFor(
   tool: ToolId,
