@@ -190,3 +190,13 @@ export {
   groupCountUniform,
   groupEntryUniform,
 } from './runtime/webgl/uniformBinding';
+
+export {
+  POINTER_ABSENT,
+  type AdvanceContext,
+  type AdvanceFunction,
+  type PointerInput,
+  type SimulationDeclaration,
+  type SimulationState,
+} from './registry/simulation';
+export type { PassInput, ShaderPass } from './registry/manifest';

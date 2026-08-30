@@ -1,9 +1,9 @@
 ## 1. Declare simulation state
 
-- [ ] 1.1 Extend the manifest type so a shader may declare an initial state and an advance function, both optional together; verify a manifest declaring one without the other fails validation naming the missing half
-- [ ] 1.2 Reject a state value whose name collides with a parameter; verify the error names the shader and the collision
-- [ ] 1.3 Define what an advance receives — previous state, elapsed seconds, resolved parameter values, and pointer input — as a type that carries nothing from the document or the browser; verify an advance can be called directly in a test with no canvas
-- [ ] 1.4 Verify a manifest declaring no state validates and is unchanged in every respect
+- [x] 1.1 Extend the manifest type so a shader may declare an initial state and an advance function, both optional together; verify a manifest declaring one without the other fails validation naming the missing half
+- [x] 1.2 Reject a state value whose name collides with a parameter; verify the error names the shader and the collision
+- [x] 1.3 Define what an advance receives — previous state, elapsed seconds, resolved parameter values, and pointer input — as a type that carries nothing from the document or the browser; verify an advance can be called directly in a test with no canvas
+- [x] 1.4 Verify a manifest declaring no state validates and is unchanged in every respect
 
 ## 2. Advance state each frame
 

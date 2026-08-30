@@ -2,6 +2,7 @@ import {
   FORBIDDEN_MANIFEST_FIELDS,
   MANIFEST_SCHEMA_VERSION,
   type ShaderManifest,
+  type ShaderPass,
   type ShaderPreset,
 } from './manifest';
 import {
@@ -269,6 +270,117 @@ function validatePreset(
  * valid. Errors are collected rather than thrown one at a time so a shader
  * author sees every fault at once.
  */
+
+/**
+ * State and its advance are declared together or not at all: one without the
+ * other is a shader that either never moves or has nothing to move.
+ */
+function validateSimulation(manifest: ShaderManifest, errors: ManifestError[]): void {
+  const simulation = manifest.simulation;
+  if (simulation === undefined) return;
+
+  const hasInitial = typeof simulation.initial === 'object' && simulation.initial !== null;
+  const hasAdvance = typeof simulation.advance === 'function';
+
+  if (!hasInitial) {
+    errors.push({
+      path: 'simulation.initial',
+      message: 'Declares an advance but no initial state. A simulation needs both.',
+    });
+  }
+  if (!hasAdvance) {
+    errors.push({
+      path: 'simulation.advance',
+      message: 'Declares an initial state but no advance. A simulation needs both.',
+    });
+  }
+  if (!hasInitial) return;
+
+  // State binds through the same uniforms parameters do, so a shared name
+  // would leave one silently overwriting the other.
+  const parameters: ParameterSchema = Array.isArray(manifest.parameters) ? manifest.parameters : [];
+  const parameterNames = new Set(parameters.map((parameter) => parameter.name));
+  for (const name of Object.keys(simulation.initial)) {
+    if (parameterNames.has(name)) {
+      errors.push({
+        path: `simulation.initial.${name}`,
+        message: `State value "${name}" collides with a parameter of the same name. Both bind as uniforms, so one would overwrite the other.`,
+      });
+    }
+  }
+}
+
+/**
+ * Passes run in order, so a pass can only read one that has already produced
+ * something — an earlier pass this frame, or any pass as of the previous one.
+ */
+function validatePasses(manifest: ShaderManifest, errors: ManifestError[]): void {
+  if (manifest.passes === undefined) return;
+
+  const passes: readonly ShaderPass[] | undefined = Array.isArray(manifest.passes)
+    ? manifest.passes
+    : undefined;
+
+  if (!passes || passes.length === 0) {
+    errors.push({ path: 'passes', message: 'Declares "passes" but lists none.' });
+    return;
+  }
+
+  const seen = new Set<string>();
+  passes.forEach((pass, index) => {
+    requireText(
+      pass.name,
+      `passes[${String(index)}].name`,
+      errors,
+      `passes[${String(index)}].name`,
+    );
+    requireText(
+      pass.fragmentSource,
+      `passes[${String(index)}].fragmentSource`,
+      errors,
+      `passes[${String(index)}].fragmentSource`,
+    );
+
+    if (seen.has(pass.name)) {
+      errors.push({
+        path: `passes[${String(index)}].name`,
+        message: `Two passes are named "${pass.name}". A pass is referenced by name, so names must be distinct.`,
+      });
+    }
+    seen.add(pass.name);
+  });
+
+  const positionOf = new Map(passes.map((pass, index) => [pass.name, index]));
+
+  passes.forEach((pass, index) => {
+    for (const input of pass.reads ?? []) {
+      const source = positionOf.get(input.pass);
+
+      if (source === undefined) {
+        errors.push({
+          path: `passes[${String(index)}].reads`,
+          message: `Pass "${pass.name}" reads "${input.pass}", which this shader does not declare.`,
+        });
+        continue;
+      }
+
+      if (input.previousFrame === true) continue;
+
+      if (source === index) {
+        errors.push({
+          path: `passes[${String(index)}].reads`,
+          message: `Pass "${pass.name}" reads itself from the current frame, which does not exist yet. Read the previous frame instead.`,
+        });
+      } else if (source > index) {
+        errors.push({
+          path: `passes[${String(index)}].reads`,
+          message: `Pass "${pass.name}" reads "${input.pass}", which runs after it. A pass can only read one that has already run.`,
+        });
+      }
+    }
+  });
+}
+
 export function validateManifest(manifest: ShaderManifest): ManifestError[] {
   const errors: ManifestError[] = [];
 
@@ -283,6 +395,9 @@ export function validateManifest(manifest: ShaderManifest): ManifestError[] {
   requireText(manifest.name, 'name', errors, 'name');
   requireText(manifest.category, 'category', errors, 'category');
   requireText(manifest.fragmentSource, 'fragmentSource', errors, 'fragmentSource');
+
+  validateSimulation(manifest, errors);
+  validatePasses(manifest, errors);
 
   // A manifest is data. Anything resembling interface code breaks the contract
   // that a shader can be added without touching the inspector.

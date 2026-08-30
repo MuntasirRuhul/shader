@@ -1,4 +1,5 @@
 import type { ParameterSchema, ParameterValues } from './parameterSchema';
+import type { SimulationDeclaration } from './simulation';
 
 /**
  * The manifest schema version this application understands.
@@ -41,6 +42,48 @@ export interface ShaderManifest {
   readonly parameters: ParameterSchema;
   /** At least one; the first is used when no preset is chosen. */
   readonly presets: readonly ShaderPreset[];
+  /**
+   * State the shader owns between frames, and how to advance it. Optional: a
+   * manifest declaring neither takes exactly the path it took before
+   * simulation existed.
+   */
+  readonly simulation?: SimulationDeclaration;
+  /**
+   * Rendering passes, in order. Optional: a manifest declaring none renders
+   * its `fragmentSource` straight to the object, as it always did.
+   */
+  readonly passes?: readonly ShaderPass[];
+}
+
+/**
+ * One step of a shader's rendering.
+ *
+ * A pass reads an earlier pass's output from this frame, or its own from the
+ * previous one — which is how a simulation held on the GPU, like a height
+ * field, carries forward. The last pass is what fills the object.
+ */
+export interface ShaderPass {
+  /** Unique within the manifest; how a later pass names this one. */
+  readonly name: string;
+  readonly fragmentSource: string;
+  /**
+   * What this pass samples. Each entry binds a texture the shader reads under
+   * the given uniform name.
+   */
+  readonly reads?: readonly PassInput[];
+}
+
+export interface PassInput {
+  /** The uniform the shader samples it through. */
+  readonly uniform: string;
+  /** The pass whose output to read. */
+  readonly pass: string;
+  /**
+   * True to read what that pass wrote on the previous frame rather than this
+   * one. Required when a pass reads itself, since its current output does not
+   * exist yet.
+   */
+  readonly previousFrame?: boolean;
 }
 
 /**
