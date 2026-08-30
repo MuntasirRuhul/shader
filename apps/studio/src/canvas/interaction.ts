@@ -246,8 +246,16 @@ export function selectionBounds(document: CanvasDocument, selection: Selection):
 }
 
 /** The cursor the canvas should show, given what is under the pointer. */
-export function cursorFor(tool: ToolId, overObject: boolean, gesture: Gesture): string {
+export function cursorFor(
+  tool: ToolId,
+  overObject: boolean,
+  gesture: Gesture,
+  panHeld = false,
+): string {
   if (gesture.kind === 'pan') return 'grabbing';
+  // Holding the modifier says what a drag will do before it is begun, which is
+  // the only signal that the active tool is suspended.
+  if (panHeld) return 'grab';
   if (gesture.kind === 'move') return 'move';
   if (tool === 'shape') return 'crosshair';
   if (tool === 'text') return 'text';

@@ -9,6 +9,7 @@ import {
 } from '@shader/core';
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
@@ -29,6 +30,7 @@ import {
   rotatedAngle,
   type Gesture,
 } from './interaction';
+import { isPanModifier, isTextEntryFocused } from './keyboard';
 import type { HandlePosition } from './transformHandles';
 import { screenToCanvas, zoomAbout, zoomStep } from './viewport';
 
@@ -57,6 +59,60 @@ export function useCanvasPointer(store: () => EditorState): CanvasPointerHandler
   const gestureRef = useRef<Gesture>(IDLE);
   gestureRef.current = gesture;
 
+  /** Whether the pan modifier is held, which turns any tool into a pan. */
+  const [panHeld, setPanHeld] = useState(false);
+  const panHeldRef = useRef(false);
+  panHeldRef.current = panHeld;
+  /**
+   * Set when a pan ends because the modifier was released rather than because
+   * the pointer was. The release that follows must do nothing: letting it
+   * through would hand the active tool a gesture it never started, and the
+   * text tool would drop an object wherever the pan happened to finish.
+   */
+  const abandonedRef = useRef(false);
+
+  useEffect(() => {
+    const context = (event: KeyboardEvent) => ({
+      key: event.key,
+      shiftKey: event.shiftKey,
+      accelKey: event.metaKey || event.ctrlKey,
+      textEntryFocused: isTextEntryFocused(document.activeElement),
+    });
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat || !isPanModifier(context(event))) return;
+      // Space would otherwise scroll the page, or press whatever has focus.
+      event.preventDefault();
+      setPanHeld(true);
+    };
+
+    const onKeyUp = (event: KeyboardEvent) => {
+      // Checked by key alone: focus may have moved since it went down, and a
+      // modifier left stuck down would make the canvas undraggable.
+      if (event.key !== ' ') return;
+      setPanHeld(false);
+
+      if (gestureRef.current.kind === 'pan') {
+        abandonedRef.current = true;
+        setGesture(IDLE);
+      }
+    };
+
+    // A pan must not survive the window losing focus mid-drag.
+    const onBlur = () => {
+      setPanHeld(false);
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, []);
+
   /** Pointer position in canvas coordinates. */
   const pointOf = useCallback(
     (event: { clientX: number; clientY: number }, element: HTMLElement): Point => {
@@ -76,8 +132,9 @@ export function useCanvasPointer(store: () => EditorState): CanvasPointerHandler
       const point = pointOf(event, element);
       const state = store();
 
-      // Space or the middle button pans, whatever tool is active.
-      const panning = event.button === 1 || event.altKey;
+      // Space, the middle button, or the alternate modifier pans, whatever
+      // tool is active.
+      const panning = event.button === 1 || event.altKey || panHeldRef.current;
 
       const handleAttribute = (event.target as HTMLElement).dataset.handle;
       const handle =
@@ -137,6 +194,16 @@ export function useCanvasPointer(store: () => EditorState): CanvasPointerHandler
   const handleUp = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
       const element = event.currentTarget;
+
+      if (abandonedRef.current) {
+        abandonedRef.current = false;
+        if (element.hasPointerCapture(event.pointerId)) {
+          element.releasePointerCapture(event.pointerId);
+        }
+        setGesture(IDLE);
+        return;
+      }
+
       if (element.hasPointerCapture(event.pointerId)) {
         element.releasePointerCapture(event.pointerId);
       }
@@ -254,7 +321,7 @@ export function useCanvasPointer(store: () => EditorState): CanvasPointerHandler
   return {
     gesture,
     constrain,
-    cursor: cursorFor(store().tool.active, overObject, gesture),
+    cursor: cursorFor(store().tool.active, overObject, gesture, panHeld),
     onPointerDown: handleDown,
     onPointerMove: handleMove,
     onPointerUp: handleUp,

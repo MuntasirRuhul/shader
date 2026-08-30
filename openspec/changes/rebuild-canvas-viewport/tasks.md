@@ -27,10 +27,10 @@
 
 ## 5. Pan and frame
 
-- [ ] 5.1 Make holding space pan with any tool active; verify the view pans, nothing is drawn or selected, and the pointer indicates what a drag will do
-- [ ] 5.2 Verify releasing space mid-drag ends the pan cleanly, leaving no partial gesture for the active tool to inherit
-- [ ] 5.3 Verify space types a space while text is being edited, and neither pans nor scrolls the page nor presses a focused control
-- [ ] 5.4 Separate zoom-to-selection from zoom-to-fit as two commands; verify zoom-to-fit frames every visible object whatever is selected, zoom-to-selection frames only the selection, and zoom-to-selection with nothing selected leaves the view alone
+- [x] 5.1 Make holding space pan with any tool active; verify the view pans, nothing is drawn or selected, and the pointer indicates what a drag will do
+- [x] 5.2 Verify releasing space mid-drag ends the pan cleanly, leaving no partial gesture for the active tool to inherit
+- [x] 5.3 Verify space types a space while text is being edited, and neither pans nor scrolls the page nor presses a focused control
+- [x] 5.4 Separate zoom-to-selection from zoom-to-fit as two commands; verify zoom-to-fit frames every visible object whatever is selected, zoom-to-selection frames only the selection, and zoom-to-selection with nothing selected leaves the view alone
 
 ## 6. Verify the whole
 

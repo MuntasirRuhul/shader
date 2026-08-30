@@ -66,16 +66,31 @@ export function useCanvasShortcuts(store: () => EditorState, options: ShortcutOp
           state.clearSelection();
           break;
 
+        // Framing everything is how you find your work; framing the selection
+        // is how you inspect it. One key that guessed between them did the
+        // wrong one whenever the selection was not what you had in mind.
         case 'zoom-to-fit': {
           const size = options.viewSize?.();
           if (!size) return;
-          // Fit the selection when there is one, otherwise the whole scene.
-          const subject =
-            state.selection.length > 0
-              ? state.document.objects.filter((object) => state.selection.includes(object.id))
-              : state.document.objects.filter((object) => object.visible);
+          const visible = state.document.objects.filter((object) => object.visible);
           state.setViewport(
-            fitToBounds(unionBounds(subject), {
+            fitToBounds(unionBounds(visible), {
+              viewWidth: size.width,
+              viewHeight: size.height,
+            }),
+          );
+          break;
+        }
+
+        case 'zoom-to-selection': {
+          const size = options.viewSize?.();
+          // Nothing selected is nothing to frame, so the view is left alone.
+          if (!size || state.selection.length === 0) return;
+          const selected = state.document.objects.filter((object) =>
+            state.selection.includes(object.id),
+          );
+          state.setViewport(
+            fitToBounds(unionBounds(selected), {
               viewWidth: size.width,
               viewHeight: size.height,
             }),
