@@ -27,6 +27,7 @@ export function CanvasStage({ registry, onCompileFailure, onToggleChrome }: Canv
   const selection = useEditorStore((state) => state.selection);
   const viewport = useEditorStore((state) => state.viewport);
   const editingTextId = useEditorStore((state) => state.tool.editingTextId);
+  const editingHtmlId = useEditorStore((state) => state.tool.editingHtmlId);
 
   const { canvasRef, setPointer } = useShaderCanvas({
     document,
@@ -82,7 +83,14 @@ export function CanvasStage({ registry, onCompileFailure, onToggleChrome }: Canv
 
       <canvas aria-label="Drawing surface" className={styles.surface} ref={canvasRef} />
 
-      <HtmlLayer document={document} viewport={viewport} />
+      <HtmlLayer
+        document={document}
+        editingId={editingHtmlId}
+        onEdited={(objectId, html) => {
+          useEditorStore.getState().updateObject(objectId, { html }, 'Edit markup');
+        }}
+        viewport={viewport}
+      />
 
       <SelectionOverlay
         constrain={pointer.constrain}

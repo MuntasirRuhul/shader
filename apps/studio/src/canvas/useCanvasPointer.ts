@@ -198,6 +198,11 @@ export function useCanvasPointer(
             }
           : undefined;
 
+      // A click anywhere else leaves the block being worked inside. Clicks
+      // *within* it never arrive here: while it is being edited the block
+      // takes the pointer itself.
+      if (state.tool.editingHtmlId) state.endHtmlEditing();
+
       // Reaching what is underneath. A markup block is page-sized and covers
       // everything behind it, so without this there is no way to select — or
       // even to see the selection of — anything it is laid over.
@@ -389,10 +394,16 @@ export function useCanvasPointer(
         if (target.type === 'text' && ancestorsOf(state.document, target.id).length === 0) {
           state.beginTextEditing(target.id);
         }
+        if (target.type === 'html' && ancestorsOf(state.document, target.id).length === 0) {
+          state.beginHtmlEditing(target.id);
+        }
         return;
       }
 
       if (target.type === 'text') state.beginTextEditing(target.id);
+      // Inward for a markup block means into the page: it takes the pointer,
+      // and its text can be changed where it stands rather than in the panel.
+      if (target.type === 'html') state.beginHtmlEditing(target.id);
     },
     [pointOf, store],
   );

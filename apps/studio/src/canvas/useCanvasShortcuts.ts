@@ -65,6 +65,13 @@ export function useCanvasShortcuts(store: () => EditorState, options: ShortcutOp
           break;
 
         case 'clear-selection': {
+          // Escape steps out of whatever was stepped into. Inside a markup
+          // block that is the block itself, before the selection is touched.
+          if (state.tool.editingHtmlId) {
+            state.endHtmlEditing();
+            break;
+          }
+
           // Inside a container, this steps out to it rather than dropping the
           // selection entirely — the way back out of a group.
           const containers = state.selection

@@ -97,6 +97,9 @@ export interface EditorState {
   readonly setShape: (shape: ShapeKind) => void;
   readonly beginTextEditing: (objectId: string) => void;
   readonly endTextEditing: () => void;
+  /** Works inside a markup block: it takes the pointer and becomes editable. */
+  readonly beginHtmlEditing: (objectId: string) => void;
+  readonly endHtmlEditing: () => void;
 }
 
 export const createEditorStore = (initialDocument: CanvasDocument = createDocument()) =>
@@ -257,6 +260,12 @@ export const createEditorStore = (initialDocument: CanvasDocument = createDocume
       },
       beginTextEditing: (objectId) => {
         set({ tool: { ...get().tool, editingTextId: objectId } });
+      },
+      beginHtmlEditing: (objectId) => {
+        set({ tool: { ...get().tool, editingHtmlId: objectId, editingTextId: null } });
+      },
+      endHtmlEditing: () => {
+        set({ tool: { ...get().tool, editingHtmlId: null } });
       },
       endTextEditing: () => {
         set({ tool: { ...get().tool, editingTextId: null } });

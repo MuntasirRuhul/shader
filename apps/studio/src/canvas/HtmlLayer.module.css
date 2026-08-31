@@ -13,11 +13,19 @@
   pointer-events: none;
 }
 
-.block {
+.block,
+.blockEditing {
   position: absolute;
   top: 0;
   left: 0;
   border: 0;
   background: transparent;
   transform-origin: 0 0;
+}
+
+/* The block being worked inside takes the pointer for itself: clicks, hovers
+   and the caret belong to the page while it is being edited. */
+.blockEditing {
+  outline: 1px solid var(--sb-accent-default);
+  pointer-events: auto;
 }

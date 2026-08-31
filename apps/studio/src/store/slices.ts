@@ -20,12 +20,21 @@ export interface ToolState {
   readonly shape: ShapeKind;
   /** The object currently being edited as text, if any. */
   readonly editingTextId: string | null;
+  /**
+   * The markup block being worked inside, if any.
+   *
+   * Held apart from `editingTextId` because the two mean different things to
+   * the canvas: text editing replaces the object with an editor, while a block
+   * being edited simply starts taking the pointer itself.
+   */
+  readonly editingHtmlId: string | null;
 }
 
 export const INITIAL_TOOL_STATE: ToolState = {
   active: 'select',
   shape: 'rectangle',
   editingTextId: null,
+  editingHtmlId: null,
 };
 
 export interface ViewportState {
