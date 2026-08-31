@@ -42,6 +42,7 @@ export const INJECTED_ATTRIBUTE = 'data-shader-builder';
 export const EDIT_MESSAGE = 'shader-builder:edit';
 export const HTML_MESSAGE = 'shader-builder:html';
 export const READY_MESSAGE = 'shader-builder:ready';
+export const WHEEL_MESSAGE = 'shader-builder:wheel';
 
 /**
  * The agent that makes a block editable from the canvas.
@@ -77,8 +78,28 @@ function agentScript(whole: boolean): string {
     }, 400);
   }
 
+  var editing = false;
+
+  // A zoom gesture over a block being edited would otherwise magnify the
+  // whole application: the wheel belongs to this page, and nothing outside it
+  // ever sees the event to refuse it. So the page refuses it, and hands the
+  // gesture to the canvas — which is what the pointer was over.
+  addEventListener(
+    'wheel',
+    function (event) {
+      if (!editing || !(event.ctrlKey || event.metaKey)) return;
+      event.preventDefault();
+      parent.postMessage(
+        { kind: '${WHEEL_MESSAGE}', deltaY: event.deltaY, x: event.clientX, y: event.clientY },
+        '*',
+      );
+    },
+    { passive: false },
+  );
+
   addEventListener('message', function (event) {
     if (!event.data || event.data.kind !== '${EDIT_MESSAGE}') return;
+    editing = Boolean(event.data.editing);
     document.body.contentEditable = event.data.editing ? 'true' : 'false';
     if (!event.data.editing) return;
 

@@ -1,4 +1,4 @@
-import type { ShaderCompileFailure, ShaderRegistry } from '@shader/core';
+import { absolutePlacement, type ShaderCompileFailure, type ShaderRegistry } from '@shader/core';
 import { useTheme } from '@shader/design-system';
 import { useCallback, useEffect, useRef } from 'react';
 import { useEditorStore } from '../store/editorStore';
@@ -12,7 +12,7 @@ import { fitTextBox } from './textRasterizer';
 import { useCanvasPointer } from './useCanvasPointer';
 import { useCanvasShortcuts } from './useCanvasShortcuts';
 import { useShaderCanvas } from './useShaderCanvas';
-import { zoomPercent } from './viewport';
+import { canvasToScreen, zoomAbout, zoomPercent, zoomStep } from './viewport';
 
 export interface CanvasStageProps {
   readonly registry: Pick<ShaderRegistry, 'get'>;
@@ -88,6 +88,26 @@ export function CanvasStage({ registry, onCompileFailure, onToggleChrome }: Canv
         editingId={editingHtmlId}
         onEdited={(objectId, html) => {
           useEditorStore.getState().updateObject(objectId, { html }, 'Edit markup');
+        }}
+        onLeave={() => {
+          useEditorStore.getState().endHtmlEditing();
+        }}
+        onZoom={(objectId, deltaY, point) => {
+          const state = useEditorStore.getState();
+          const object = state.document.objects.find((candidate) => candidate.id === objectId);
+          if (!object) return;
+
+          // The point is in the block's own pixels, which are canvas units:
+          // its placement puts it on the canvas, and the view puts it on
+          // screen, where zooming about a point is expressed.
+          const placement = absolutePlacement(state.document, object);
+          const screen = canvasToScreen(
+            { x: placement.x + point.x, y: placement.y + point.y },
+            state.viewport,
+          );
+          state.setViewport(
+            zoomAbout(state.viewport, screen, zoomStep(state.viewport.zoom, deltaY)),
+          );
         }}
         viewport={viewport}
       />

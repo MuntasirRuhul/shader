@@ -1,8 +1,14 @@
 import { absolutePlacement, ancestorsOf, isHtmlObject, type CanvasDocument } from '@shader/core';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import type { ViewportState } from '../store/slices';
 import { transientChannel, type TransientEdit } from '../store/transientChannel';
-import { EDIT_MESSAGE, documentFor, HTML_MESSAGE, READY_MESSAGE } from './htmlDocument';
+import {
+  EDIT_MESSAGE,
+  documentFor,
+  HTML_MESSAGE,
+  READY_MESSAGE,
+  WHEEL_MESSAGE,
+} from './htmlDocument';
 import styles from './HtmlLayer.module.css';
 import { canvasToScreen } from './viewport';
 
@@ -29,6 +35,13 @@ export interface HtmlLayerProps {
   readonly editingId?: string | null;
   /** Called with what a block's markup now is, after it has been edited. */
   readonly onEdited?: (objectId: string, html: string) => void;
+  /** Leaves the block being worked inside. */
+  readonly onLeave?: () => void;
+  /**
+   * A zoom gesture made over a block being edited, in that block's own pixels.
+   * The page hands it over because nothing outside the page ever sees it.
+   */
+  readonly onZoom?: (objectId: string, deltaY: number, point: { x: number; y: number }) => void;
 }
 
 /** The properties a drag changes about where a block is, and how big. */
@@ -39,7 +52,14 @@ function isDragged(key: string): key is Dragged {
   return (DRAGGED as readonly string[]).includes(key);
 }
 
-export function HtmlLayer({ document, viewport, editingId, onEdited }: HtmlLayerProps) {
+export function HtmlLayer({
+  document,
+  viewport,
+  editingId,
+  onEdited,
+  onLeave,
+  onZoom,
+}: HtmlLayerProps) {
   /** Each block's frame, so the one being edited can be told to become so. */
   const frames = useRef(new Map<string, HTMLIFrameElement>());
 
@@ -121,6 +141,16 @@ export function HtmlLayer({ document, viewport, editingId, onEdited }: HtmlLayer
           reported.current.set(objectId, data.html);
           onEdited?.(objectId, data.html);
         }
+
+        const wheel = event.data as { deltaY?: number; x?: number; y?: number };
+        if (
+          data.kind === WHEEL_MESSAGE &&
+          typeof wheel.deltaY === 'number' &&
+          typeof wheel.x === 'number' &&
+          typeof wheel.y === 'number'
+        ) {
+          onZoom?.(objectId, wheel.deltaY, { x: wheel.x, y: wheel.y });
+        }
       }
     };
 
@@ -128,7 +158,7 @@ export function HtmlLayer({ document, viewport, editingId, onEdited }: HtmlLayer
     return () => {
       window.removeEventListener('message', listener);
     };
-  }, [onEdited, editingId]);
+  }, [onEdited, onZoom, editingId]);
 
   /**
    * What a drag currently has, which never reaches the document until it ends.
@@ -179,43 +209,58 @@ export function HtmlLayer({ document, viewport, editingId, onEdited }: HtmlLayer
           viewport,
         );
 
-        return (
-          <iframe
-            className={object.id === editingId ? styles.blockEditing : styles.block}
-            key={object.id}
-            ref={(element) => {
-              // Nothing is forgotten when this is called with null. React
-              // re-runs a ref callback whenever its identity changes — which
-              // for one written inline is every render — and clearing here
-              // threw away, on every keystroke, the record of what each page
-              // had reported.
-              if (!element) return;
+        const leaving = object.id === editingId && onLeave;
 
-              frames.current.set(object.id, element);
-              // Its first page, set here for the same reason as every later
-              // one: the frame reloads when this changes, and when that
-              // happens is not React's decision to make.
-              if (!rendered.current.has(object.id)) {
-                rendered.current.set(object.id, { html: object.html, css: object.css });
-                element.srcdoc = documentFor(object.html, object.css);
-              }
-            }}
-            // No same-origin: scripts in pasted markup may run, and may not
-            // reach this application, its storage, or the document.
-            sandbox="allow-scripts"
-            style={{
-              width: `${String(placement.width)}px`,
-              height: `${String(placement.height)}px`,
-              transform: [
-                `translate(${String(centre.x)}px, ${String(centre.y)}px)`,
-                `rotate(${String(placement.rotation)}rad)`,
-                `scale(${String(viewport.zoom)})`,
-                `translate(${String(-placement.width / 2)}px, ${String(-placement.height / 2)}px)`,
-              ].join(' '),
-              opacity: object.opacity,
-            }}
-            title={object.name}
-          />
+        return (
+          <Fragment key={object.id}>
+            {leaving && (
+              <button
+                className={styles.done}
+                onClick={onLeave}
+                style={{
+                  transform: `translate(${String(centre.x)}px, ${String(centre.y)}px) translate(${String((-placement.width * viewport.zoom) / 2)}px, ${String((-placement.height * viewport.zoom) / 2 - 30)}px)`,
+                }}
+                type="button"
+              >
+                Done editing
+              </button>
+            )}
+            <iframe
+              className={object.id === editingId ? styles.blockEditing : styles.block}
+              ref={(element) => {
+                // Nothing is forgotten when this is called with null. React
+                // re-runs a ref callback whenever its identity changes — which
+                // for one written inline is every render — and clearing here
+                // threw away, on every keystroke, the record of what each page
+                // had reported.
+                if (!element) return;
+
+                frames.current.set(object.id, element);
+                // Its first page, set here for the same reason as every later
+                // one: the frame reloads when this changes, and when that
+                // happens is not React's decision to make.
+                if (!rendered.current.has(object.id)) {
+                  rendered.current.set(object.id, { html: object.html, css: object.css });
+                  element.srcdoc = documentFor(object.html, object.css);
+                }
+              }}
+              // No same-origin: scripts in pasted markup may run, and may not
+              // reach this application, its storage, or the document.
+              sandbox="allow-scripts"
+              style={{
+                width: `${String(placement.width)}px`,
+                height: `${String(placement.height)}px`,
+                transform: [
+                  `translate(${String(centre.x)}px, ${String(centre.y)}px)`,
+                  `rotate(${String(placement.rotation)}rad)`,
+                  `scale(${String(viewport.zoom)})`,
+                  `translate(${String(-placement.width / 2)}px, ${String(-placement.height / 2)}px)`,
+                ].join(' '),
+                opacity: object.opacity,
+              }}
+              title={object.name}
+            />
+          </Fragment>
         );
       })}
     </div>

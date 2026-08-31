@@ -2,7 +2,7 @@ import { createDocument, createHtml, resetObjectIds } from '@shader/core';
 import { act, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { INITIAL_VIEWPORT } from '../store/slices';
-import { EDIT_MESSAGE, HTML_MESSAGE, READY_MESSAGE } from './htmlDocument';
+import { EDIT_MESSAGE, HTML_MESSAGE, READY_MESSAGE, WHEEL_MESSAGE } from './htmlDocument';
 import { HtmlLayer } from './HtmlLayer';
 
 /**
@@ -154,5 +154,76 @@ describe('what the page reports back', () => {
 
     expect(frameOf().getAttribute('srcdoc')).not.toBe(before);
     expect(frameOf().getAttribute('srcdoc')).toContain('From the panel');
+  });
+});
+
+describe('a zoom gesture made over a block being edited', () => {
+  /**
+   * While a block is entered it takes the pointer, so a wheel with the
+   * accelerator held belongs to the page — and nothing outside the page ever
+   * sees the event to refuse it. Left alone, the browser magnifies the whole
+   * application instead of zooming the canvas.
+   */
+  it('is handed to the canvas rather than magnifying the application', () => {
+    const onZoom = vi.fn();
+    render(
+      <HtmlLayer
+        document={document_}
+        editingId="block"
+        onZoom={onZoom}
+        viewport={INITIAL_VIEWPORT}
+      />,
+    );
+
+    fromPage(frameOf(), { kind: WHEEL_MESSAGE, deltaY: -120, x: 40, y: 25 });
+
+    expect(onZoom).toHaveBeenCalledWith('block', -120, { x: 40, y: 25 });
+  });
+
+  it('is ignored when it carries nothing to zoom by', () => {
+    const onZoom = vi.fn();
+    render(
+      <HtmlLayer
+        document={document_}
+        editingId="block"
+        onZoom={onZoom}
+        viewport={INITIAL_VIEWPORT}
+      />,
+    );
+
+    fromPage(frameOf(), { kind: WHEEL_MESSAGE });
+
+    expect(onZoom).not.toHaveBeenCalled();
+  });
+});
+
+describe('leaving a block that covers the canvas', () => {
+  it('offers a way out, since there may be no ground left to click on', () => {
+    const onLeave = vi.fn();
+    render(
+      <HtmlLayer
+        document={document_}
+        editingId="block"
+        onLeave={onLeave}
+        viewport={INITIAL_VIEWPORT}
+      />,
+    );
+
+    screen.getByRole('button', { name: 'Done editing' }).click();
+
+    expect(onLeave).toHaveBeenCalled();
+  });
+
+  it('offers it only while a block is being edited', () => {
+    render(
+      <HtmlLayer
+        document={document_}
+        editingId={null}
+        onLeave={() => undefined}
+        viewport={INITIAL_VIEWPORT}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Done editing' })).not.toBeInTheDocument();
   });
 });

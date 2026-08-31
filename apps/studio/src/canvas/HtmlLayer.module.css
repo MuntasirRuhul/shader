@@ -29,3 +29,26 @@
   outline: 1px solid var(--sb-accent-default);
   pointer-events: auto;
 }
+
+/* The way out of a block that covers the canvas: there may be no ground left
+   around it to click on, and Escape is not discoverable. */
+.done {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: var(--sb-space-2) var(--sb-space-3);
+  border: 1px solid var(--sb-border-default);
+  border-radius: var(--sb-radius-sm);
+  background-color: var(--sb-surface-overlay);
+  color: var(--sb-text-primary);
+  font-family: var(--sb-font-sans);
+  font-size: var(--sb-font-size-sm);
+  transform-origin: 0 0;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.done:focus-visible {
+  outline: 2px solid var(--sb-focus-ring);
+  outline-offset: 1px;
+}
