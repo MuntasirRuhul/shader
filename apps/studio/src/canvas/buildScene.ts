@@ -62,6 +62,10 @@ export function buildScene(document: CanvasDocument, options: SceneOptions = {})
     // handle a group is.
     if (object.type === 'frame' && !isShaderFill(object.fill)) continue;
 
+    // Markup is laid out by the browser and drawn over the canvas, not by the
+    // renderer. Drawing it here as well would put a solid fill behind it.
+    if (object.type === 'html') continue;
+
     // An object inside a hidden container is hidden with it.
     if (ancestorsOf(document, object.id).some((parent) => !parent.visible)) continue;
 

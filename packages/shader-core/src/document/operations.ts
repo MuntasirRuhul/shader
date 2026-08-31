@@ -36,6 +36,9 @@ export interface ObjectChanges {
   /** Text objects only. */
   readonly text?: string;
   readonly textSettings?: TextSettings;
+  /** Markup objects only. */
+  readonly html?: string;
+  readonly css?: string;
 }
 
 /**

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useEditorStore } from '../store/editorStore';
 import styles from './CanvasStage.module.css';
 import { groundStyle } from './ground';
+import { HtmlLayer } from './HtmlLayer';
 import { inkFor } from './inkColor';
 import { SelectionOverlay } from './SelectionOverlay';
 import { TextEditor } from './TextEditor';
@@ -80,6 +81,8 @@ export function CanvasStage({ registry, onCompileFailure, onToggleChrome }: Canv
       <div aria-hidden className={styles.ground} style={groundStyle(viewport)} />
 
       <canvas aria-label="Drawing surface" className={styles.surface} ref={canvasRef} />
+
+      <HtmlLayer document={document} viewport={viewport} />
 
       <SelectionOverlay
         constrain={pointer.constrain}

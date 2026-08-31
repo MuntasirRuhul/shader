@@ -10,7 +10,7 @@ import { DEFAULT_BLEND_MODE, type BlendMode } from './blendMode';
  * without a graphics context.
  */
 
-export const OBJECT_TYPES = ['rectangle', 'ellipse', 'text', 'image', 'frame'] as const;
+export const OBJECT_TYPES = ['rectangle', 'ellipse', 'text', 'image', 'frame', 'html'] as const;
 export type CanvasObjectType = (typeof OBJECT_TYPES)[number];
 
 export function isCanvasObjectType(value: unknown): value is CanvasObjectType {
@@ -141,7 +141,29 @@ export interface ImageObject extends BaseObject {
   readonly naturalHeight: number;
 }
 
-export type CanvasObject = RectangleObject | EllipseObject | TextObject | ImageObject | FrameObject;
+/**
+ * A block of markup, laid out by the browser itself.
+ *
+ * The canvas draws shaders; this draws a page. The two cannot be the same
+ * kind of thing — a shader is pixels this application produces, and markup is
+ * pixels the browser's layout engine produces from rules nobody here
+ * implements — so an html object is rendered as a real element positioned over
+ * the canvas rather than as a quad inside it.
+ *
+ * That is what makes it worth having: the fidelity is the browser's, the text
+ * stays selectable and crisp at any magnification, and what is pasted in is
+ * what appears.
+ */
+export interface HtmlObject extends BaseObject {
+  readonly type: 'html';
+  /** The markup, as written. May carry its own `<style>`. */
+  readonly html: string;
+  /** Styles applied alongside it, kept apart so both can be edited as such. */
+  readonly css: string;
+}
+
+export type CanvasObject =
+  RectangleObject | EllipseObject | TextObject | ImageObject | FrameObject | HtmlObject;
 
 export function isTextObject(object: CanvasObject): object is TextObject {
   return object.type === 'text';
@@ -149,6 +171,10 @@ export function isTextObject(object: CanvasObject): object is TextObject {
 
 export function isImageObject(object: CanvasObject): object is ImageObject {
   return object.type === 'image';
+}
+
+export function isHtmlObject(object: CanvasObject): object is HtmlObject {
+  return object.type === 'html';
 }
 
 export function isFrameObject(object: CanvasObject): object is FrameObject {
@@ -291,6 +317,22 @@ export function createImage(
     mediaType,
     naturalWidth,
     naturalHeight,
+  };
+}
+
+/** Markup on the canvas, at a size a page section is usually drafted at. */
+export function createHtml(
+  html: string,
+  css: string,
+  overrides: Partial<HtmlObject> = {},
+): HtmlObject {
+  return {
+    ...baseDefaults({ width: 480, height: 320, ...overrides }),
+    id: overrides.id ?? nextObjectId('html'),
+    name: overrides.name ?? 'HTML',
+    type: 'html',
+    html,
+    css,
   };
 }
 

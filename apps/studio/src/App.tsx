@@ -9,6 +9,7 @@ import { IconButton, ThemeProvider, Tooltip, TooltipProvider } from '@shader/des
 import './global.css';
 import { CanvasStage } from './canvas/CanvasStage';
 import { Inspector } from './inspector/Inspector';
+import { CodePanel } from './panels/CodePanel';
 import { ShaderLibrary } from './panels/ShaderLibrary';
 import { ImageImport } from './persistence/ImageImport';
 import { useDocumentPersistence } from './persistence/useDocumentPersistence';
@@ -177,6 +178,8 @@ export function App() {
               </Tooltip>
 
               <ImageImport />
+
+              <CodePanel />
 
               <Tooltip content="Undo" shortcut="⌘Z">
                 <IconButton disabled={!canUndo} icon={undoIcon} label="Undo" onClick={undo} />

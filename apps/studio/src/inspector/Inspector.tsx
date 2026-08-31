@@ -107,35 +107,38 @@ export function Inspector({ registry, defaultShaderId }: InspectorProps) {
           </div>
         )}
 
-        {object && object.type !== 'image' && isSolidFill(object.fill) && (
-          <div className={styles.state}>
-            <h2 className={styles.stateTitle}>Solid fill</h2>
-            <ColorField
-              label="Fill colour"
-              onValueChange={(color) => {
-                useEditorStore.getState().setFill(object.id, solidFill(color));
-              }}
-              value={object.fill.color}
-            />
-            {defaultShaderId !== undefined && (
-              <Button
-                onClick={() => {
-                  const manifest = registry.get(defaultShaderId);
-                  if (!manifest) return;
-                  useEditorStore
-                    .getState()
-                    .setFill(
-                      object.id,
-                      shaderFill(manifest.id, resolvePreset(manifest), manifest.presets[0]?.id),
-                    );
+        {object &&
+          object.type !== 'image' &&
+          object.type !== 'html' &&
+          isSolidFill(object.fill) && (
+            <div className={styles.state}>
+              <h2 className={styles.stateTitle}>Solid fill</h2>
+              <ColorField
+                label="Fill colour"
+                onValueChange={(color) => {
+                  useEditorStore.getState().setFill(object.id, solidFill(color));
                 }}
-                size="sm"
-              >
-                Use a shader instead
-              </Button>
-            )}
-          </div>
-        )}
+                value={object.fill.color}
+              />
+              {defaultShaderId !== undefined && (
+                <Button
+                  onClick={() => {
+                    const manifest = registry.get(defaultShaderId);
+                    if (!manifest) return;
+                    useEditorStore
+                      .getState()
+                      .setFill(
+                        object.id,
+                        shaderFill(manifest.id, resolvePreset(manifest), manifest.presets[0]?.id),
+                      );
+                  }}
+                  size="sm"
+                >
+                  Use a shader instead
+                </Button>
+              )}
+            </div>
+          )}
 
         {object && isShaderFill(object.fill) && (
           <ShaderPanel objectId={object.id} registry={registry} />
