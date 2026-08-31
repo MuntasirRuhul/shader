@@ -15,6 +15,7 @@ import { ImageImport } from './persistence/ImageImport';
 import { useDocumentPersistence } from './persistence/useDocumentPersistence';
 import { libraryShaders, registry } from './shaders/registry';
 import { AppShell } from './shell/AppShell';
+import { useBrowserZoomGuard } from './shell/useBrowserZoomGuard';
 import { usePanelLayout } from './shell/usePanelLayout';
 import { useEditorStore } from './store/editorStore';
 
@@ -74,6 +75,7 @@ const panelsIcon = (
 
 export function App() {
   const { layout, setWidth, chromeHidden, toggleChrome } = usePanelLayout();
+  useBrowserZoomGuard();
   useDocumentPersistence();
   const document = useEditorStore((state) => state.document);
   const tool = useEditorStore((state) => state.tool.active);
