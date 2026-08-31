@@ -15,6 +15,7 @@ import { useEditorStore } from '../store/editorStore';
 import { transientChannel } from '../store/transientChannel';
 import { Appearance } from './Appearance';
 import styles from './Inspector.module.css';
+import { Placement } from './Placement';
 import { ShaderParameters } from './ShaderParameters';
 import { Typography } from './Typography';
 import { useTransientValues } from './useTransientValues';
@@ -61,6 +62,8 @@ export function Inspector({ registry, defaultShaderId }: InspectorProps) {
             <p className={styles.stateBody}>Select a single object to edit its parameters.</p>
           </div>
         )}
+
+        {object && <Placement object={object} />}
 
         {object && <Appearance object={object} />}
 
