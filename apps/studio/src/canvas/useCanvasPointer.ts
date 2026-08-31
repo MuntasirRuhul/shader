@@ -379,7 +379,14 @@ export function useCanvasPointer(
     (event: ReactMouseEvent<HTMLElement>) => {
       const state = store();
       const point = pointOf(event, event.currentTarget);
-      const target = objectAt(state.document, point);
+
+      // A markup block under the pointer wins the gesture, even with
+      // something lying over it. Double-clicking is how you get *into* a
+      // block, and a shape on top of one would otherwise make its markup
+      // unreachable — while nothing is lost for the shape, which has no
+      // inside to step into.
+      const block = objectsAt(state.document, point).find((candidate) => candidate.type === 'html');
+      const target = block ?? objectAt(state.document, point);
       if (!target) return;
 
       // Double-clicking goes one level inward. A group is selected by a single

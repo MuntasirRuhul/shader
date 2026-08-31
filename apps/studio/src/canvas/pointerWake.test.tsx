@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createDocument, createRectangle, shaderFill } from '@shader/core';
+import { createDocument, createHtml, createRectangle, shaderFill } from '@shader/core';
 import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EditorState } from '../store/editorStore';
@@ -199,5 +199,68 @@ describe('reaching what is underneath', () => {
     pressAt(300, 300, true, []);
 
     expect(selected.at(-1)).toEqual(['over']);
+  });
+});
+
+describe('stepping inside a block', () => {
+  /**
+   * Double-clicking is how you get into a block's markup. A shape lying over
+   * one — even by a few pixels, which is what a shadow or a border makes —
+   * used to take the gesture and leave the markup unreachable.
+   */
+  const block = createHtml('<p>hi</p>', '', { id: 'block', x: 0, y: 0, width: 200, height: 100 });
+  const over = createRectangle({ id: 'over', x: 0, y: 0, width: 220, height: 120 });
+  const covered = createDocument({ objects: [block, over] });
+
+  function harness(document_ = covered, selection: string[] = []) {
+    const calls: string[] = [];
+    const state = {
+      document: document_,
+      selection,
+      viewport: INITIAL_VIEWPORT,
+      tool: { active: 'select', editingTextId: null, editingHtmlId: null },
+      select: (objectId: string) => calls.push(`select:${objectId}`),
+      selectMany: (ids: string[]) => calls.push(`selectMany:${ids.join(',')}`),
+      beginHtmlEditing: (objectId: string) => calls.push(`enter:${objectId}`),
+      beginTextEditing: (objectId: string) => calls.push(`type:${objectId}`),
+      endHtmlEditing: () => calls.push('leave'),
+    } as unknown as EditorState;
+
+    const { result } = renderHook(() => useCanvasPointer(() => state));
+    return { result, calls };
+  }
+
+  const twice = {
+    clientX: 50,
+    clientY: 50,
+    currentTarget: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }) },
+  } as never;
+
+  it('reaches the block through whatever is lying on it', () => {
+    const { result, calls } = harness();
+
+    result.current.onDoubleClick(twice);
+
+    expect(calls).toContain('enter:block');
+  });
+
+  it('enters it whether or not it was the thing selected', () => {
+    const { result, calls } = harness(covered, ['over']);
+
+    result.current.onDoubleClick(twice);
+
+    expect(calls).toContain('enter:block');
+  });
+
+  it('leaves ordinary objects to the usual gesture', () => {
+    const shapes = createDocument({
+      objects: [createRectangle({ id: 'under', x: 0, y: 0, width: 200, height: 100 }), over],
+    });
+    const { result, calls } = harness(shapes);
+
+    result.current.onDoubleClick(twice);
+
+    expect(calls).toContain('select:over');
+    expect(calls.some((call) => call.startsWith('enter:'))).toBe(false);
   });
 });
