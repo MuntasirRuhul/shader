@@ -113,6 +113,7 @@ export {
   createDocument,
   createEllipse,
   createFrame,
+  createHtml,
   createImage,
   createRectangle,
   createText,
@@ -121,6 +122,7 @@ export {
   DOCUMENT_VERSION,
   isCanvasObjectType,
   isFrameObject,
+  isHtmlObject,
   isImageObject,
   isShaderFill,
   isSolidFill,
@@ -137,6 +139,7 @@ export {
   type EllipseObject,
   type Fill,
   type FrameObject,
+  type HtmlObject,
   type ImageObject,
   type RectangleObject,
   type ShaderFill,
@@ -209,11 +212,14 @@ export {
 } from './persistence/serialization';
 
 export {
+  BACKUP_STORAGE_KEY,
   browserStorage,
   clearStoredDocument,
   DOCUMENT_STORAGE_KEY,
+  recoverStoredDocument,
   restoreDocument,
   saveDocument,
+  UNREADABLE_STORAGE_KEY,
   type DocumentStorage,
   type RestoreResult,
   type SaveResult,

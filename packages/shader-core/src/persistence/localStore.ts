@@ -12,6 +12,18 @@ import { deserializeDocument, serializeDocument, type LoadFailure } from './seri
 
 export const DOCUMENT_STORAGE_KEY = 'shader-builder.document';
 
+/**
+ * Where a document goes instead of being deleted.
+ *
+ * Two things used to end a document's life outright: data this build could not
+ * read, which was cleared to let the editor start, and an empty canvas saved
+ * over a full one. Both are recoverable if the bytes are kept, and both are
+ * unrecoverable if they are not — so nothing is ever removed now, only set
+ * aside under these keys.
+ */
+export const UNREADABLE_STORAGE_KEY = 'shader-builder.document.unreadable';
+export const BACKUP_STORAGE_KEY = 'shader-builder.document.backup';
+
 export type SaveResult =
   | { readonly ok: true }
   | {
@@ -62,6 +74,7 @@ export function saveDocument(
   }
 
   try {
+    keepPreviousIfEmptying(storage, document);
     storage.setItem(DOCUMENT_STORAGE_KEY, serializeDocument(document));
     return { ok: true };
   } catch (error) {
@@ -98,11 +111,70 @@ export function restoreDocument(storage: DocumentStorage | null): RestoreResult 
   return { ok: true, document: loaded.document, migrated: loaded.migrated };
 }
 
-/** Forgets the stored document, used after recovering from unreadable data. */
-export function clearStoredDocument(storage: DocumentStorage | null): void {
+/**
+ * Keeps the last document that had anything in it, when an empty one is about
+ * to replace it.
+ *
+ * A canvas emptied on purpose is ordinary and must save. A canvas emptied by
+ * anything else — a reload that started fresh, a restore that failed — looks
+ * exactly the same from here, and is the one case where saving destroys work
+ * nobody chose to destroy. Keeping the previous bytes costs one copy and makes
+ * the difference recoverable either way.
+ */
+function keepPreviousIfEmptying(storage: DocumentStorage, next: CanvasDocument): void {
+  if (next.objects.length > 0) return;
+
   try {
-    storage?.removeItem(DOCUMENT_STORAGE_KEY);
+    const previous = storage.getItem(DOCUMENT_STORAGE_KEY);
+    if (previous === null || previous === '') return;
+    // Cheap enough to parse: this runs only when saving an empty canvas.
+    if (!/"objects"\s*:\s*\[\s*[^\]\s]/.test(previous)) return;
+
+    storage.setItem(BACKUP_STORAGE_KEY, previous);
+  } catch {
+    // A backup that cannot be written must not stop the save itself.
+  }
+}
+
+/**
+ * Sets aside data this build could not read, so it survives being replaced.
+ *
+ * It used to be deleted outright, which turned "this build cannot read your
+ * document" into "your document is gone".
+ */
+export function clearStoredDocument(storage: DocumentStorage | null): void {
+  if (!storage) return;
+
+  try {
+    const raw = storage.getItem(DOCUMENT_STORAGE_KEY);
+    if (raw !== null && raw !== '') storage.setItem(UNREADABLE_STORAGE_KEY, raw);
+    storage.removeItem(DOCUMENT_STORAGE_KEY);
   } catch {
     // Nothing to do: the editor continues either way.
   }
+}
+
+/**
+ * The most recent document that was set aside rather than saved, if there is
+ * one — what an unreadable document held, or what an empty canvas replaced.
+ */
+export function recoverStoredDocument(storage: DocumentStorage | null): RestoreResult {
+  if (!storage) return { ok: false, reason: 'empty' };
+
+  for (const key of [UNREADABLE_STORAGE_KEY, BACKUP_STORAGE_KEY]) {
+    let raw: string | null;
+    try {
+      raw = storage.getItem(key);
+    } catch {
+      continue;
+    }
+    if (raw === null || raw === '') continue;
+
+    const loaded = deserializeDocument(raw);
+    if (loaded.ok) {
+      return { ok: true, document: loaded.document, migrated: loaded.migrated };
+    }
+  }
+
+  return { ok: false, reason: 'empty' };
 }

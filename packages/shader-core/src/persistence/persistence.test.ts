@@ -12,10 +12,13 @@ import {
 } from '../document/model';
 import { addObjects } from '../document/operations';
 import {
+  BACKUP_STORAGE_KEY,
   clearStoredDocument,
   DOCUMENT_STORAGE_KEY,
+  recoverStoredDocument,
   restoreDocument,
   saveDocument,
+  UNREADABLE_STORAGE_KEY,
   type DocumentStorage,
 } from './localStore';
 import {
@@ -271,5 +274,60 @@ describe('saving to local storage', () => {
     expect(() => {
       clearStoredDocument(null);
     }).not.toThrow();
+  });
+});
+
+describe('nothing is ever deleted outright', () => {
+  /**
+   * Both halves of this were learned the hard way, on a canvas somebody had
+   * spent an afternoon on: data this build could not read was cleared so the
+   * editor could start, and the empty document it started with was then saved
+   * over the top. Either alone loses the work, and there was no copy of it
+   * anywhere.
+   */
+  it('sets unreadable data aside instead of removing it', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(DOCUMENT_STORAGE_KEY, '{ this is not a document }');
+
+    clearStoredDocument(storage);
+
+    expect(storage.getItem(DOCUMENT_STORAGE_KEY)).toBeNull();
+    expect(storage.getItem(UNREADABLE_STORAGE_KEY)).toBe('{ this is not a document }');
+  });
+
+  it('keeps the last document that had anything in it when an empty one is saved', () => {
+    const storage = new MemoryStorage();
+    saveDocument(storage, createDocument({ objects: [createRectangle({ id: 'a' })] }));
+
+    saveDocument(storage, createDocument());
+
+    const recovered = recoverStoredDocument(storage);
+    expect(recovered.ok).toBe(true);
+    expect(recovered.ok && recovered.document.objects.map((object) => object.id)).toEqual(['a']);
+  });
+
+  it('still saves the empty canvas, because emptying one is a thing people do', () => {
+    const storage = new MemoryStorage();
+    saveDocument(storage, createDocument({ objects: [createRectangle({ id: 'a' })] }));
+
+    saveDocument(storage, createDocument());
+
+    const restored = restoreDocument(storage);
+    expect(restored.ok && restored.document.objects).toEqual([]);
+  });
+
+  it('does not keep a copy of an empty canvas replacing an empty canvas', () => {
+    const storage = new MemoryStorage();
+    saveDocument(storage, createDocument());
+    saveDocument(storage, createDocument());
+
+    expect(storage.getItem(BACKUP_STORAGE_KEY)).toBeNull();
+  });
+
+  it('has nothing to offer when nothing was ever set aside', () => {
+    const storage = new MemoryStorage();
+    saveDocument(storage, createDocument({ objects: [createRectangle({ id: 'a' })] }));
+
+    expect(recoverStoredDocument(storage)).toMatchObject({ ok: false });
   });
 });
