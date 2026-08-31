@@ -1,12 +1,14 @@
 import {
   ancestorsOf,
   createEllipse,
+  objectsAt,
   createRectangle,
   createText,
   solidFill,
   objectAt,
   updateObject,
   type CanvasDocument,
+  type CanvasObject,
   type Point,
 } from '@shader/core';
 import {
@@ -195,6 +197,19 @@ export function useCanvasPointer(
               handle: handleAttribute as HandlePosition | 'rotate',
             }
           : undefined;
+
+      // Reaching what is underneath. A markup block is page-sized and covers
+      // everything behind it, so without this there is no way to select — or
+      // even to see the selection of — anything it is laid over.
+      const throughStack = (event.metaKey || event.ctrlKey) && !panning && !handle;
+      if (throughStack) {
+        const beneath = nextBeneath(objectsAt(state.document, point), state.selection);
+        if (beneath) {
+          state.selectMany([beneath.id]);
+          setGesture(IDLE);
+          return;
+        }
+      }
 
       const result = onPointerDown({
         tool: state.tool.active,
@@ -424,6 +439,25 @@ export function useCanvasPointer(
     onDoubleClick: handleDoubleClick,
     onWheel: handleWheel,
   };
+}
+
+/**
+ * The next object down from whatever is selected, at a point, cycling back to
+ * the front once the bottom is reached.
+ *
+ * Repeating the gesture therefore walks the stack rather than sticking on the
+ * second object, and starting with nothing selected takes the one below the
+ * top — which is what "reach through" means when the top is what you can
+ * already click.
+ */
+function nextBeneath(
+  stack: readonly CanvasObject[],
+  selection: readonly string[],
+): CanvasObject | undefined {
+  if (stack.length === 0) return undefined;
+
+  const current = stack.findIndex((object) => selection.includes(object.id));
+  return stack[(current + 1) % stack.length];
 }
 
 function gestureRectFor(gesture: Gesture, point: Point, constrain: boolean) {

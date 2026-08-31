@@ -1,5 +1,7 @@
 import { absolutePlacement, ancestorsOf, isHtmlObject, type CanvasDocument } from '@shader/core';
+import { useEffect, useState } from 'react';
 import type { ViewportState } from '../store/slices';
+import { transientChannel, type TransientEdit } from '../store/transientChannel';
 import { documentFor } from './htmlDocument';
 import styles from './HtmlLayer.module.css';
 import { canvasToScreen } from './viewport';
@@ -25,7 +27,34 @@ export interface HtmlLayerProps {
   readonly viewport: ViewportState;
 }
 
+/** The properties a drag changes about where a block is, and how big. */
+const DRAGGED = ['x', 'y', 'width', 'height', 'rotation'] as const;
+type Dragged = (typeof DRAGGED)[number];
+
+function isDragged(key: string): key is Dragged {
+  return (DRAGGED as readonly string[]).includes(key);
+}
+
 export function HtmlLayer({ document, viewport }: HtmlLayerProps) {
+  /**
+   * What a drag currently has, which never reaches the document until it ends.
+   *
+   * Without this a block sits still while its selection outline moves with the
+   * pointer, and only catches up when the drag is let go — the object and the
+   * thing being dragged visibly disagree for the whole gesture.
+   */
+  const [dragging, setDragging] = useState<readonly TransientEdit[]>([]);
+  useEffect(() => transientChannel.subscribe(setDragging), []);
+
+  const dragged = (objectId: string): Partial<Record<Dragged, number>> => {
+    const changes: Partial<Record<Dragged, number>> = {};
+    for (const edit of dragging) {
+      if (edit.objectId !== objectId || !isDragged(edit.key)) continue;
+      if (typeof edit.value === 'number') changes[edit.key] = edit.value;
+    }
+    return changes;
+  };
+
   const blocks = document.objects.filter(
     (object) =>
       isHtmlObject(object) &&
@@ -40,7 +69,14 @@ export function HtmlLayer({ document, viewport }: HtmlLayerProps) {
       {blocks.map((object) => {
         if (!isHtmlObject(object)) return null;
 
-        const placement = absolutePlacement(document, object);
+        // A drag states what it changes the way the object stores it, which
+        // for something inside a container is relative to that container — so
+        // it is applied before the containers are composed in, not after.
+        const live = dragged(object.id);
+        const placement = absolutePlacement(
+          document,
+          Object.keys(live).length === 0 ? object : { ...object, ...live },
+        );
         // Rotation is about the object's centre, as it is everywhere else, so
         // the block is composed centre-first: to the origin, magnified,
         // turned, then out to where its centre belongs on screen.

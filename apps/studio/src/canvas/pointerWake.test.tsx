@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createDocument, createRectangle, shaderFill } from '@shader/core';
 import { renderHook } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EditorState } from '../store/editorStore';
 import { INITIAL_VIEWPORT } from '../store/slices';
 import { buildScene } from './buildScene';
@@ -125,5 +125,79 @@ describe('the canvas is actually told where the pointer is', () => {
 
     expect(source).toMatch(/onHover: setPointer/);
     expect(source).toMatch(/onPointerLeave=\{pointer\.onPointerLeave\}/);
+  });
+});
+
+describe('reaching what is underneath', () => {
+  /**
+   * A markup block is page-sized and covers everything behind it, so every
+   * click lands on the block: the objects under it cannot be selected, moved,
+   * or typed into at all.
+   */
+  const under = createRectangle({ id: 'under', x: 0, y: 0, width: 200, height: 200 });
+  const over = createRectangle({ id: 'over', x: 0, y: 0, width: 400, height: 400 });
+  const stacked = createDocument({ objects: [under, over] });
+
+  let selected: string[][] = [];
+
+  function stateOf(selection: readonly string[]): EditorState {
+    return {
+      document: stacked,
+      selection,
+      viewport: INITIAL_VIEWPORT,
+      tool: { active: 'select', editingTextId: null },
+      selectMany: (ids: string[]) => {
+        selected.push(ids);
+      },
+    } as unknown as EditorState;
+  }
+
+  function pressAt(x: number, y: number, modifier: boolean, selection: readonly string[]) {
+    const element = {
+      getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
+      setPointerCapture: () => undefined,
+      dataset: {},
+    };
+    const { result } = renderHook(() => useCanvasPointer(() => stateOf(selection)));
+    result.current.onPointerDown({
+      clientX: x,
+      clientY: y,
+      button: 0,
+      shiftKey: false,
+      altKey: false,
+      metaKey: modifier,
+      pointerId: 1,
+      currentTarget: element,
+      target: element,
+    } as never);
+  }
+
+  beforeEach(() => {
+    selected = [];
+  });
+
+  it('selects the top object on a plain click', () => {
+    pressAt(50, 50, false, []);
+
+    expect(selected.at(-1)).toEqual(['over']);
+  });
+
+  it('reaches the one beneath when the accelerator is held', () => {
+    pressAt(50, 50, true, ['over']);
+
+    expect(selected.at(-1)).toEqual(['under']);
+  });
+
+  it('walks the stack rather than sticking on the second', () => {
+    // Held again with the lower one selected, it comes back to the top.
+    pressAt(50, 50, true, ['under']);
+
+    expect(selected.at(-1)).toEqual(['over']);
+  });
+
+  it('leaves a click where nothing is stacked alone', () => {
+    pressAt(300, 300, true, []);
+
+    expect(selected.at(-1)).toEqual(['over']);
   });
 });

@@ -10,7 +10,7 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { INITIAL_VIEWPORT } from '../store/slices';
 import { buildScene } from './buildScene';
-import { documentFor } from './htmlDocument';
+import { documentFor, isWholeDocument } from './htmlDocument';
 import { HtmlLayer } from './HtmlLayer';
 
 /**
@@ -133,5 +133,55 @@ describe('what the renderer is asked to draw', () => {
     const drawn = buildScene(document_).items.map((item) => item.objectId);
 
     expect(drawn).toEqual(['shape']);
+  });
+});
+
+describe('a whole page pasted in', () => {
+  const page = `<!DOCTYPE html>
+<html lang="en">
+<head><title>Landing</title><style>body { background: #101223; }</style></head>
+<body><h1>Elevate</h1></body>
+</html>`;
+
+  it('is kept whole rather than buried in another page', () => {
+    // Nesting it renders — browsers are forgiving — but the head, the page's
+    // own base styles and its viewport meta are quietly discarded, and it
+    // comes out looking not quite like the page it came from.
+    const rendered = documentFor(page, '');
+
+    expect(rendered.match(/<html/gi)).toHaveLength(1);
+    expect(rendered.match(/<body/gi)).toHaveLength(1);
+    expect(rendered).toContain('<title>Landing</title>');
+  });
+
+  it('still starts transparent, and still lets the page override that', () => {
+    const rendered = documentFor(page, '');
+
+    expect(rendered).toContain('background: transparent');
+    expect(rendered.indexOf('background: #101223')).toBeGreaterThan(
+      rendered.indexOf('background: transparent'),
+    );
+  });
+
+  it('applies what the CSS tab holds on top of it', () => {
+    const rendered = documentFor(page, 'h1 { color: red; }');
+
+    expect(rendered).toContain('h1 { color: red; }');
+  });
+
+  it('is recognised however it is written', () => {
+    expect(isWholeDocument('<!DOCTYPE html><html></html>')).toBe(true);
+    expect(isWholeDocument('\n  <html lang="en">')).toBe(true);
+    expect(isWholeDocument('<div>a fragment</div>')).toBe(false);
+    expect(isWholeDocument('<p>with a <html> word in it</p>')).toBe(false);
+  });
+
+  it('gives a page with no head somewhere to put the styles', () => {
+    const bodyOnly = '<!doctype html><body><p>hello</p></body>';
+
+    const rendered = documentFor(bodyOnly, '');
+
+    expect(rendered).toContain('color-scheme');
+    expect(rendered).toContain('<p>hello</p>');
   });
 });

@@ -1,6 +1,11 @@
 .layer {
   position: absolute;
   inset: 0;
+
+  /* Above the drawing surface, which is itself raised over the ground: a
+     block belongs in front of the shaders, not behind them. The selection
+     overlay shares this level and comes later, so its handles stay on top. */
+  z-index: 2;
   overflow: hidden;
 
   /* The canvas beneath owns every gesture: a click here selects and drags the

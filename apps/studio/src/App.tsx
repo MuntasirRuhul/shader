@@ -95,10 +95,17 @@ export function App() {
   const placeShader = (manifest: ShaderManifest, preset: ShaderPreset) => {
     const fill = shaderFill(manifest.id, resolvePreset(manifest, preset.id), preset.id);
 
+    // A markup block draws itself, so a fill under it is a colour nobody can
+    // ever see: choosing a shader with one selected means "put this on the
+    // canvas", not "fill the block with it".
+    const fillable = document.objects.filter(
+      (object) => selection.includes(object.id) && object.type !== 'html',
+    );
+
     // With something selected, the choice applies to it — which is how a
     // shader gets onto a shape or into text. Otherwise it places a new object.
-    if (selection.length > 0) {
-      for (const objectId of selection) setFill(objectId, fill);
+    if (fillable.length > 0) {
+      for (const object of fillable) setFill(object.id, fill);
       return;
     }
 
