@@ -32,6 +32,8 @@ export interface UniformWrite {
 }
 
 export interface FakeGlOptions {
+  /** Extensions the driver refuses, e.g. rendering into a float target. */
+  readonly withoutExtensions?: readonly string[];
   /** Shader sources matching this fail to compile, as a broken shader would. */
   readonly failCompileMatching?: RegExp;
   /** When true, linking fails. */
@@ -63,6 +65,8 @@ export class FakeGl implements GlContext {
   readonly TEXTURE_WRAP_T = 0x2803;
   readonly UNPACK_FLIP_Y_WEBGL = 0x9240;
   readonly RGBA8 = 0x8058;
+  readonly RGBA16F = 0x881a;
+  readonly NEAREST = 0x2600;
   readonly FRAMEBUFFER = 0x8d40;
   readonly COLOR_ATTACHMENT0 = 0x8ce0;
   readonly FUNC_ADD = 0x8006;
@@ -82,7 +86,12 @@ export class FakeGl implements GlContext {
   readonly draws: DrawRecord[] = [];
   readonly deletedFramebuffers: GlFramebuffer[] = [];
   /** Storage allocations, in order, so target sizing can be asserted. */
-  readonly allocations: { texture: GlTexture; width: number; height: number }[] = [];
+  readonly allocations: {
+    texture: GlTexture;
+    width: number;
+    height: number;
+    internalFormat: number;
+  }[] = [];
   /** Framebuffers cleared, in order. */
   readonly clears: (GlFramebuffer | null)[] = [];
   readonly deletedPrograms: GlProgram[] = [];
@@ -258,18 +267,23 @@ export class FakeGl implements GlContext {
     this.activeUnit = unit - this.TEXTURE0;
   }
   texParameteri(): void {}
-  texImage2D(): void {}
+  /** How many pictures have been uploaded, so re-upload can be proven absent. */
+  uploads = 0;
+
+  texImage2D(): void {
+    this.uploads += 1;
+  }
   pixelStorei(): void {}
 
   texStorage2D(
     _target: number,
     _levels: number,
-    _internalFormat: number,
+    internalFormat: number,
     width: number,
     height: number,
   ): void {
     const texture = this.boundTextures.get(this.activeUnit) ?? null;
-    if (texture) this.allocations.push({ texture, width, height });
+    if (texture) this.allocations.push({ texture, width, height, internalFormat });
   }
 
   createFramebuffer(): GlFramebuffer | null {
@@ -330,6 +344,14 @@ export class FakeGl implements GlContext {
       viewport: { ...this.currentViewport },
       textures: new Map(this.boundTextures),
     });
+  }
+
+  /** Extensions asked for, in order, so a fallback can be proven deliberate. */
+  readonly requestedExtensions: string[] = [];
+
+  getExtension(name: string): unknown {
+    this.requestedExtensions.push(name);
+    return this.options.withoutExtensions?.includes(name) ? null : {};
   }
 
   isContextLost(): boolean {

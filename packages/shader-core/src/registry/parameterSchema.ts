@@ -7,7 +7,15 @@
  * not editing either consumer.
  */
 
-export const PARAMETER_TYPES = ['number', 'boolean', 'color', 'enum', 'vector2', 'group'] as const;
+export const PARAMETER_TYPES = [
+  'number',
+  'boolean',
+  'color',
+  'enum',
+  'vector2',
+  'image',
+  'group',
+] as const;
 
 export type ParameterType = (typeof PARAMETER_TYPES)[number];
 
@@ -70,6 +78,23 @@ export interface Vector2Parameter extends BaseParameter {
   readonly step: number;
 }
 
+/**
+ * A picture the shader samples.
+ *
+ * The value is a `data:` URI, or the empty string when no picture has been
+ * chosen — the same self-contained form an imported image object stores, so a
+ * document that is sent still shows what its shaders were reading.
+ *
+ * It binds as a sampler of its own rather than through the object's picture,
+ * because the two are different things: an image object's picture is what the
+ * object *is*, and this is something a shader was pointed at.
+ */
+export interface ImageParameter extends BaseParameter {
+  readonly type: 'image';
+  /** A `data:` URI, or `''` for none. */
+  readonly defaultValue: string;
+}
+
 /** A parameter that can appear inside a repeatable group entry. */
 export type LeafParameter =
   NumberParameter | BooleanParameter | ColorParameter | EnumParameter | Vector2Parameter;
@@ -91,7 +116,7 @@ export interface GroupParameter extends BaseParameter {
   readonly defaultEntries: readonly ParameterValues[];
 }
 
-export type ShaderParameter = LeafParameter | GroupParameter;
+export type ShaderParameter = LeafParameter | GroupParameter | ImageParameter;
 
 /** A single parameter's value. Plain data so it serializes without help. */
 export type LeafParameterValue = number | boolean | string | Vector2Value;
@@ -108,7 +133,11 @@ export function isGroupParameter(parameter: ShaderParameter): parameter is Group
 }
 
 export function isLeafParameter(parameter: ShaderParameter): parameter is LeafParameter {
-  return parameter.type !== 'group';
+  return parameter.type !== 'group' && parameter.type !== 'image';
+}
+
+export function isImageParameter(parameter: ShaderParameter): parameter is ImageParameter {
+  return parameter.type === 'image';
 }
 
 export function isParameterType(value: unknown): value is ParameterType {

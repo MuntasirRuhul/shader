@@ -313,3 +313,33 @@ describe('binding is shader-agnostic', () => {
     expect(packed('freshColor')).toEqual(hexToRgb('#123456').map((c) => Number(c.toFixed(5))));
   });
 });
+
+describe('an image parameter', () => {
+  const picture: ParameterSchema = [
+    { name: 'source', label: 'Picture', type: 'image', defaultValue: '' },
+  ];
+
+  it('declares a sampler, a presence flag, and the picture size', () => {
+    const declared = declareUniforms(picture);
+
+    expect(declared).toContain('uniform sampler2D source;');
+    expect(declared).toContain('uniform bool source_present;');
+    expect(declared).toContain('uniform vec2 source_size;');
+  });
+
+  it('binds no uniform of its own', () => {
+    // A picture is a texture: it needs a unit and an upload, which is the
+    // renderer's business. Writing the data URI here would set the sampler to
+    // a nonsense unit.
+    bindParameters(gl, lookup, picture, { source: 'data:image/png;base64,AAAA' });
+
+    expect(gl.writesTo('source')).toEqual([]);
+    expect(gl.writesTo('source_present')).toEqual([]);
+  });
+
+  it('leaves the other parameters in the schema bound', () => {
+    bindParameters(gl, lookup, [...picture, ...sampleParameters], { speed: 1.25 });
+
+    expect(gl.lastWriteTo('speed')?.value).toBe(1.25);
+  });
+});

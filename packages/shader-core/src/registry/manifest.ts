@@ -71,7 +71,39 @@ export interface ShaderPass {
    * the given uniform name.
    */
   readonly reads?: readonly PassInput[];
+  /**
+   * What the pass's target has to hold. `byte` is eight bits a channel and
+   * clamps to 0..1 — right for anything that is a colour. `float` is sixteen
+   * and signed, which a simulation needs: a velocity field, a pressure field,
+   * or dye brighter than white before it is tone-mapped.
+   *
+   * Defaults to `byte`, so a pass that draws a picture costs a quarter of the
+   * memory a field does.
+   */
+  readonly precision?: PassPrecision;
+  /**
+   * The fraction of the object's size this pass runs at, `0..1`. Defaults to
+   * 1.
+   *
+   * A fluid is simulated coarsely and shown finely — the reference experiment
+   * solves velocity on a 128 grid and carries dye on a 512 one — because the
+   * cost of a solve is quadratic in resolution and the eye reads the dye, not
+   * the field pushing it.
+   */
+  readonly scale?: number;
+  /**
+   * How many times this pass runs per frame, each run reading what the last
+   * one wrote. Defaults to 1.
+   *
+   * This is what a Jacobi solve is: the same step repeated until the field
+   * relaxes. Expressed as a count rather than as twenty near-identical passes,
+   * which is what it would otherwise have to be.
+   */
+  readonly iterations?: number;
 }
+
+/** What a pass's target holds. See `ShaderPass.precision`. */
+export type PassPrecision = 'byte' | 'float';
 
 export interface PassInput {
   /** The uniform the shader samples it through. */
@@ -79,9 +111,14 @@ export interface PassInput {
   /** The pass whose output to read. */
   readonly pass: string;
   /**
-   * True to read what that pass wrote on the previous frame rather than this
-   * one. Required when a pass reads itself, since its current output does not
-   * exist yet.
+   * True to read what that pass wrote *last*, rather than what it has written
+   * this frame. Required when a pass reads itself, since its current output
+   * does not exist yet.
+   *
+   * For a pass that runs once a frame, "last" is the previous frame. For an
+   * iterated pass reading itself, it is the previous iteration — which is what
+   * makes a solve a solve, and what makes the first iteration of a frame
+   * continue from where the last one ended.
    */
   readonly previousFrame?: boolean;
 }

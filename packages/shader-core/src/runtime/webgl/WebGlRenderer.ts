@@ -1,4 +1,5 @@
 import type { ShaderManifest, ShaderPass } from '../../registry/manifest';
+import { isImageParameter } from '../../registry/parameterSchema';
 import { resolveValues } from '../../registry/presets';
 import type { ShaderRegistry } from '../../registry/ShaderRegistry';
 import { POINTER_ABSENT } from '../../registry/simulation';
@@ -20,7 +21,7 @@ import { ProgramCache, type CompiledProgram, type CompileResult } from './Progra
 import { RenderTargetStore } from './RenderTargetStore';
 import { FULL_TARGET_MATRIX, PRESENT_SOURCE_UNIFORM, RESERVED_UNIFORMS } from './shaderAbi';
 import { buildModelMatrix } from './transform';
-import { bindParameters } from './uniformBinding';
+import { bindParameters, imagePresentUniform, imageSizeUniform } from './uniformBinding';
 
 /** Unit 0 is the mask's, unit 1 the image's; a pass reads from 2 upward. */
 const MASK_UNIT = 0;
@@ -30,6 +31,45 @@ const FIRST_PASS_UNIT = 2;
 /** How a shader's targets are keyed: they belong to an object, not a shader. */
 function targetKey(objectId: string, passName: string): string {
   return `${objectId}::${passName}`;
+}
+
+/**
+ * How a picture bound to an image parameter is keyed. Two objects using the
+ * same shader can be pointed at different pictures, so the object is part of
+ * the key exactly as it is for a mask.
+ */
+function parameterImageKey(objectId: string, parameterName: string): string {
+  return `${objectId}::${parameterName}`;
+}
+
+/** The pixel size a pass draws at, which may be a fraction of the object's. */
+function passSize(
+  pass: ShaderPass,
+  width: number,
+  height: number,
+): { width: number; height: number } {
+  const scale = pass.scale ?? 1;
+  return { width: Math.max(1, width * scale), height: Math.max(1, height * scale) };
+}
+
+/**
+ * A picture's own pixel dimensions.
+ *
+ * A decoded image reports them as `naturalWidth`; a rasterized vector is a
+ * canvas, which reports `width`. A shader fitting a picture to its object
+ * needs the number either way.
+ */
+function sourceDimensions(source: TexImageSource): { width: number; height: number } {
+  const measured = source as {
+    naturalWidth?: number;
+    naturalHeight?: number;
+    width?: number;
+    height?: number;
+  };
+  return {
+    width: measured.naturalWidth ?? measured.width ?? 0,
+    height: measured.naturalHeight ?? measured.height ?? 0,
+  };
 }
 
 /**
@@ -98,6 +138,8 @@ export class WebGlRenderer implements RenderingPort {
   private targets: RenderTargetStore;
   private readonly masks = new Map<string, UploadedTexture>();
   private readonly images = new Map<string, UploadedTexture>();
+  /** Pictures bound to shaders' image parameters, keyed by object and name. */
+  private readonly parameterImages = new Map<string, UploadedTexture>();
   private vao: GlVertexArray | null = null;
 
   /**
@@ -300,32 +342,52 @@ export class WebGlRenderer implements RenderingPort {
       }
 
       const key = targetKey(item.objectId, pass.name);
-      const target = needsTarget(pass, index)
-        ? this.targets.beginWrite(key, targetWidth, targetHeight, doubled.has(pass.name))
-        : null;
+      const size = passSize(pass, targetWidth, targetHeight);
+      const runs = pass.iterations ?? 1;
 
-      if (target) {
-        gl.bindFramebuffer(gl.FRAMEBUFFER, target.framebuffer);
-        gl.viewport(
-          0,
-          0,
-          Math.max(1, Math.round(targetWidth)),
-          Math.max(1, Math.round(targetHeight)),
-        );
-        // A pass covers its target, and blending it with the frame before
-        // would leave a simulation reading its own smeared history.
-        gl.disable(gl.BLEND);
-        gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-      } else {
-        this.bindCanvas();
+      // A pass may run several times, each run reading what the last wrote.
+      // The buffers flip on every one of them, which is what makes a solve
+      // relax rather than recompute its first answer.
+      for (let iteration = 0; iteration < runs; iteration += 1) {
+        const target = needsTarget(pass, index)
+          ? this.targets.beginWrite(
+              key,
+              size.width,
+              size.height,
+              doubled.has(pass.name),
+              pass.precision ?? 'byte',
+            )
+          : null;
+
+        if (target) {
+          gl.bindFramebuffer(gl.FRAMEBUFFER, target.framebuffer);
+          gl.viewport(
+            0,
+            0,
+            Math.max(1, Math.round(size.width)),
+            Math.max(1, Math.round(size.height)),
+          );
+          // A pass covers its target, and blending it with the frame before
+          // would leave a simulation reading its own smeared history.
+          gl.disable(gl.BLEND);
+          gl.clearColor(0, 0, 0, 0);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+        } else {
+          this.bindCanvas();
+        }
+
+        this.drawThrough(acquired.compiled, manifest, item, elapsedSeconds, {
+          final: target === null,
+          reads: pass,
+          objectId: item.objectId,
+          iteration,
+        });
+
+        // What this pass sampled must not still be bound when the next draw
+        // lands in it: a texture that is both readable and being written to is
+        // a feedback loop, and the whole draw is dropped rather than clipped.
+        this.releaseSampledTargets((pass.reads ?? []).length);
       }
-
-      this.drawThrough(acquired.compiled, manifest, item, elapsedSeconds, {
-        final: target === null,
-        reads: pass,
-        objectId: item.objectId,
-      });
     }
 
     // The last pass wrote to a target only because something reads it next
@@ -366,6 +428,7 @@ export class WebGlRenderer implements RenderingPort {
     gl.uniform1i(location(PRESENT_SOURCE_UNIFORM), FIRST_PASS_UNIT);
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    this.releaseSampledTargets(1);
   }
 
   /**
@@ -378,7 +441,7 @@ export class WebGlRenderer implements RenderingPort {
     manifest: ShaderManifest,
     item: RenderItem,
     elapsedSeconds: number,
-    options: { final: boolean; reads?: ShaderPass; objectId?: string },
+    options: { final: boolean; reads?: ShaderPass; objectId?: string; iteration?: number },
   ): void {
     const { gl } = this;
     const { program, location } = compiled;
@@ -399,6 +462,7 @@ export class WebGlRenderer implements RenderingPort {
       item.transform.height,
     );
     gl.uniform1f(location(RESERVED_UNIFORMS.time), elapsedSeconds);
+    gl.uniform1i(location(RESERVED_UNIFORMS.iteration), options.iteration ?? 0);
 
     this.bindImage(item, location(RESERVED_UNIFORMS.hasImage), location(RESERVED_UNIFORMS.image));
 
@@ -417,6 +481,15 @@ export class WebGlRenderer implements RenderingPort {
 
     bindParameters(gl, location, manifest.parameters, item.values);
 
+    // Pass reads take the units from `FIRST_PASS_UNIT` upward, so a shader's
+    // own pictures start after them.
+    this.bindParameterImages(
+      compiled,
+      manifest,
+      item,
+      FIRST_PASS_UNIT + (options.reads?.reads?.length ?? 0),
+    );
+
     const state = this.simulations.valuesFor(item.objectId);
     if (state) {
       bindParameters(gl, location, manifest.simulation?.schema ?? [], state);
@@ -427,6 +500,68 @@ export class WebGlRenderer implements RenderingPort {
     }
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  /**
+   * Binds a picture for each of the shader's image parameters.
+   *
+   * A parameter with no picture — none chosen, or one still decoding — is
+   * reported absent rather than left holding whatever texture the unit had,
+   * which would be the previous object's picture.
+   */
+  private bindParameterImages(
+    compiled: CompiledProgram,
+    manifest: ShaderManifest,
+    item: RenderItem,
+    firstUnit: number,
+  ): void {
+    const { gl } = this;
+    let unit = firstUnit;
+
+    for (const parameter of manifest.parameters) {
+      if (!isImageParameter(parameter)) continue;
+
+      const presentLocation = compiled.location(imagePresentUniform(parameter));
+      const sizeLocation = compiled.location(imageSizeUniform(parameter));
+      const source = item.parameterImages?.[parameter.name];
+
+      if (!source) {
+        gl.uniform1i(presentLocation, 0);
+        gl.uniform2f(sizeLocation, 0, 0);
+        continue;
+      }
+
+      const texture = this.uploadedTexture(
+        this.parameterImages,
+        parameterImageKey(item.objectId, parameter.name),
+        source,
+      );
+      gl.activeTexture(gl.TEXTURE0 + unit);
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.uniform1i(compiled.location(parameter.name), unit);
+      gl.uniform1i(presentLocation, 1);
+
+      const { width, height } = sourceDimensions(source.source);
+      gl.uniform2f(sizeLocation, width, height);
+      unit += 1;
+    }
+  }
+
+  /**
+   * Unbinds the units a pass's reads occupied.
+   *
+   * A target sampled on one frame is drawn into on the next. Left bound, it
+   * would be both the source and the destination of that draw, which is
+   * invalid — and fails silently, leaving the pass's output missing rather
+   * than wrong.
+   */
+  private releaseSampledTargets(count: number): void {
+    const { gl } = this;
+
+    for (let index = 0; index < count; index += 1) {
+      gl.activeTexture(gl.TEXTURE0 + FIRST_PASS_UNIT + index);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+    }
   }
 
   /** Binds the textures a pass samples: earlier passes, or its own last frame. */
@@ -559,6 +694,16 @@ export class WebGlRenderer implements RenderingPort {
       }
     }
 
+    // Keyed by object and parameter, so a shader that no longer declares a
+    // picture releases it as surely as an object that has gone does.
+    const liveParameterImages = this.liveParameterImageKeys();
+    for (const [key, entry] of this.parameterImages) {
+      if (!liveParameterImages.has(key)) {
+        this.gl.deleteTexture(entry.texture);
+        this.parameterImages.delete(key);
+      }
+    }
+
     // Keyed by object and pass, so an object that is gone, and an object whose
     // fill now needs fewer passes, both drop the targets they no longer use.
     this.targets.retainOnly(this.liveTargetKeys());
@@ -567,6 +712,19 @@ export class WebGlRenderer implements RenderingPort {
     for (const shaderId of [...this.reportedFailures]) {
       if (!liveShaders.has(shaderId)) this.reportedFailures.delete(shaderId);
     }
+  }
+
+  /** Every picture the current scene still has a parameter pointing at. */
+  private liveParameterImageKeys(): ReadonlySet<string> {
+    const keys = new Set<string>();
+
+    for (const item of this.scene.items) {
+      for (const name of Object.keys(item.parameterImages ?? {})) {
+        keys.add(parameterImageKey(item.objectId, name));
+      }
+    }
+
+    return keys;
   }
 
   /** Every target key the current scene still needs. */
@@ -601,6 +759,7 @@ export class WebGlRenderer implements RenderingPort {
     this.targets.forgetAll();
     this.masks.clear();
     this.images.clear();
+    this.parameterImages.clear();
     this.vao = null;
     this.reportedFailures.clear();
     this.setStatus({ kind: 'context-lost' });
@@ -640,6 +799,11 @@ export class WebGlRenderer implements RenderingPort {
     return this.images.size;
   }
 
+  /** How many pictures bound to image parameters are held. */
+  get parameterImageCount(): number {
+    return this.parameterImages.size;
+  }
+
   /** How many intermediate pass targets are currently held. */
   get targetCount(): number {
     return this.targets.size;
@@ -655,7 +819,7 @@ export class WebGlRenderer implements RenderingPort {
 
     this.programs.releaseAll();
     this.targets.releaseAll();
-    for (const held of [this.masks, this.images]) {
+    for (const held of [this.masks, this.images, this.parameterImages]) {
       for (const entry of held.values()) this.gl.deleteTexture(entry.texture);
       held.clear();
     }

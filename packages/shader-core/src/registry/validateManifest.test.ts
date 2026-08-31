@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ShaderManifest } from './manifest';
 import type { ShaderParameter } from './parameterSchema';
 import { manifestWith, poleGroup, sampleManifest, sampleParameters } from './testFixtures';
-import { formatManifestErrors, validateManifest } from './validateManifest';
+import { formatManifestErrors, MAX_PASS_ITERATIONS, validateManifest } from './validateManifest';
 
 /** The error messages produced for a manifest, joined for easy matching. */
 function messages(manifest: ShaderManifest): string {
@@ -311,5 +311,126 @@ describe('formatManifestErrors', () => {
     const errors = validateManifest(manifestWith({ id: '', name: '', category: '' }));
 
     expect(errors.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('a picture parameter', () => {
+  const withPicture = (defaultValue: unknown) =>
+    manifestWith({
+      parameters: [
+        {
+          name: 'source',
+          label: 'Picture',
+          type: 'image',
+          defaultValue: defaultValue as string,
+        },
+      ],
+      presets: [{ id: 'default', name: 'Default', values: {} }],
+    });
+
+  it('accepts one that starts with no picture', () => {
+    expect(validateManifest(withPicture(''))).toEqual([]);
+  });
+
+  it('accepts a data URI as its default', () => {
+    expect(validateManifest(withPicture('data:image/png;base64,AAAA'))).toEqual([]);
+  });
+
+  it('refuses a path or a URL', () => {
+    // The bytes travel with the document. A reference to a file elsewhere is a
+    // document that stops working the moment it is sent.
+    expect(messages(withPicture('/pictures/sea.png'))).toContain('expected a data URI');
+    expect(messages(withPicture('https://example.com/sea.png'))).toContain('expected a data URI');
+  });
+
+  it('refuses a value that is not a picture at all', () => {
+    expect(
+      messages(
+        manifestWith({
+          parameters: [{ name: 'source', label: 'Picture', type: 'image', defaultValue: '' }],
+          presets: [{ id: 'default', name: 'Default', values: { source: 7 } }],
+        }),
+      ),
+    ).toContain('expected a data URI');
+  });
+
+  it('refuses one inside a repeatable group', () => {
+    // A group binds fixed-size uniform arrays; there is no array of samplers
+    // for a picture per entry to be bound through.
+    expect(
+      messages(
+        manifestWith({
+          parameters: [
+            {
+              name: 'layers',
+              label: 'Layers',
+              type: 'group',
+              maxEntries: 2,
+              entryParameters: [
+                { name: 'source', label: 'Picture', type: 'image', defaultValue: '' } as never,
+              ],
+              defaultEntries: [],
+            },
+          ],
+          presets: [{ id: 'default', name: 'Default', values: {} }],
+        }),
+      ),
+    ).toContain('cannot contain a picture');
+  });
+});
+
+describe('what a pass asks of its target', () => {
+  const withPass = (overrides: Record<string, unknown>) =>
+    manifestWith({
+      passes: [
+        {
+          name: 'field',
+          fragmentSource: 'void main() { outColor = texture(uPrevious, vUv); }',
+          reads: [{ uniform: 'uPrevious', pass: 'field', previousFrame: true }],
+          ...overrides,
+        },
+      ],
+    });
+
+  it('accepts a float field solved at a fraction of the object', () => {
+    expect(validateManifest(withPass({ precision: 'float', scale: 0.25, iterations: 20 }))).toEqual(
+      [],
+    );
+  });
+
+  it('refuses a precision it cannot allocate', () => {
+    expect(messages(withPass({ precision: 'double' }))).toContain('Unsupported precision');
+  });
+
+  it('refuses a scale that is not a fraction of the object', () => {
+    // Zero allocates nothing to draw into; above one is larger than what is shown.
+    expect(messages(withPass({ scale: 0 }))).toContain('greater than 0 and at most 1');
+    expect(messages(withPass({ scale: 2 }))).toContain('greater than 0 and at most 1');
+  });
+
+  it('refuses an iteration count that is not a whole number of runs', () => {
+    expect(messages(withPass({ iterations: 0 }))).toContain('whole number of at least 1');
+    expect(messages(withPass({ iterations: 2.5 }))).toContain('whole number of at least 1');
+  });
+
+  it('refuses more iterations than a frame can afford', () => {
+    expect(messages(withPass({ iterations: MAX_PASS_ITERATIONS + 1 }))).toContain(
+      'over the ceiling',
+    );
+  });
+
+  it('refuses to iterate a pass that cannot see what it last wrote', () => {
+    // Every run after the first would repeat the first, at full cost.
+    const blind = manifestWith({
+      passes: [
+        {
+          name: 'blur',
+          fragmentSource: 'void main() { outColor = vec4(vUv, 0.0, 1.0); }',
+          iterations: 4,
+        },
+      ],
+    });
+
+    expect(messages(blind)).toContain('repeats the first');
   });
 });

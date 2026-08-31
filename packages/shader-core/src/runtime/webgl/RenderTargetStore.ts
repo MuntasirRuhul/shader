@@ -1,3 +1,4 @@
+import type { PassPrecision } from '../../registry/manifest';
 import type { GlContext, GlFramebuffer, GlTexture } from './glTypes';
 
 /** A texture a pass draws into, with the framebuffer that points at it. */
@@ -11,6 +12,8 @@ interface TargetEntry {
   readonly buffers: RenderTarget[];
   width: number;
   height: number;
+  /** What the storage holds, so a pass that changes its mind is reallocated. */
+  precision: PassPrecision;
   /** Which buffer the current frame writes into. Only moves when doubled. */
   writeIndex: number;
 }
@@ -29,8 +32,24 @@ interface TargetEntry {
  */
 export class RenderTargetStore {
   private readonly entries = new Map<string, TargetEntry>();
+  /**
+   * Whether the driver will draw into a float target.
+   *
+   * Sampling one is core to WebGL2; rendering into one is an extension, and a
+   * driver without it must still draw something. Such a pass falls back to
+   * eight bits, which is wrong for a field but is a shader that looks poor
+   * rather than a canvas that is blank.
+   */
+  private readonly floatTargets: boolean;
 
-  constructor(private readonly gl: GlContext) {}
+  constructor(private readonly gl: GlContext) {
+    this.floatTargets = gl.getExtension('EXT_color_buffer_float') !== null;
+  }
+
+  /** Whether float targets are actually available, for a caller that reports it. */
+  get supportsFloat(): boolean {
+    return this.floatTargets;
+  }
 
   /** How many targets are held. Lets tests prove allocation and release. */
   get size(): number {
@@ -55,6 +74,7 @@ export class RenderTargetStore {
     width: number,
     height: number,
     doubleBuffered: boolean,
+    precision: PassPrecision = 'byte',
   ): RenderTarget | null {
     const pixelWidth = Math.max(1, Math.round(width));
     const pixelHeight = Math.max(1, Math.round(height));
@@ -66,7 +86,8 @@ export class RenderTargetStore {
       entry &&
       (entry.buffers.length !== wanted ||
         entry.width !== pixelWidth ||
-        entry.height !== pixelHeight)
+        entry.height !== pixelHeight ||
+        entry.precision !== precision)
     ) {
       // What a pass reads has to stay aligned with what is drawn, so a resized
       // object gets new storage rather than a stretched read.
@@ -78,14 +99,14 @@ export class RenderTargetStore {
     if (!entry) {
       const buffers: RenderTarget[] = [];
       for (let index = 0; index < wanted; index += 1) {
-        const target = this.create(pixelWidth, pixelHeight);
+        const target = this.create(pixelWidth, pixelHeight, precision);
         if (!target) {
           for (const created of buffers) this.release(created);
           return null;
         }
         buffers.push(target);
       }
-      entry = { buffers, width: pixelWidth, height: pixelHeight, writeIndex: 0 };
+      entry = { buffers, width: pixelWidth, height: pixelHeight, precision, writeIndex: 0 };
       this.entries.set(key, entry);
     } else if (doubleBuffered) {
       // Flip before writing, so the buffer not being written holds the frame
@@ -136,15 +157,17 @@ export class RenderTargetStore {
     this.entries.clear();
   }
 
-  private create(width: number, height: number): RenderTarget | null {
+  private create(width: number, height: number, precision: PassPrecision): RenderTarget | null {
     const { gl } = this;
 
     const texture = gl.createTexture();
     if (!texture) return null;
 
+    const float = precision === 'float' && this.floatTargets;
+
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, width, height);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, float ? gl.RGBA16F : gl.RGBA8, width, height);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -158,6 +181,12 @@ export class RenderTargetStore {
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+
+    // Allocating left this texture bound to unit 0, where a shader's samplers
+    // point until something binds them elsewhere. Drawing into a texture that
+    // a sampler could read is a feedback loop, and the driver drops the draw.
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, null);
 
     // A shader reading this before anything has written it must see a defined
     // value, not whatever the driver happened to leave here.

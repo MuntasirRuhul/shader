@@ -5,6 +5,7 @@ export {
   defaultValues,
   groupParameters,
   isGroupParameter,
+  isImageParameter,
   isLeafParameter,
   isParameterType,
   parameterGroup,
@@ -13,6 +14,7 @@ export {
   type EnumOption,
   type EnumParameter,
   type GroupParameter,
+  type ImageParameter,
   type LeafParameter,
   type LeafParameterValue,
   type NumberParameter,
@@ -34,6 +36,7 @@ export {
 
 export {
   formatManifestErrors,
+  imageValueError,
   leafValueError,
   validateManifest,
   validateValues,
@@ -230,4 +233,4 @@ export {
   type SimulationDeclaration,
   type SimulationState,
 } from './registry/simulation';
-export type { PassInput, ShaderPass } from './registry/manifest';
+export type { PassInput, PassPrecision, ShaderPass } from './registry/manifest';

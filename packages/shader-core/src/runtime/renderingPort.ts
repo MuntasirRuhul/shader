@@ -34,6 +34,12 @@ export interface RenderItem {
   /** The picture to draw, for an object created from a file. */
   readonly image?: TexSource;
   /**
+   * Pictures the shader's own image parameters sample, keyed by parameter
+   * name. Absent for a parameter with no picture chosen, and for one whose
+   * file has not finished decoding.
+   */
+  readonly parameterImages?: Readonly<Record<string, TexSource>>;
+  /**
    * Where the pointer is over this object, for a shader that reacts to it.
    * Absent when the pointer is elsewhere.
    */

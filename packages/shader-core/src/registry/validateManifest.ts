@@ -7,6 +7,7 @@ import {
 } from './manifest';
 import {
   isGroupParameter,
+  isImageParameter,
   isParameterType,
   type LeafParameter,
   type ParameterSchema,
@@ -91,6 +92,21 @@ export function leafValueError(parameter: LeafParameter, value: unknown): string
   }
 }
 
+/**
+ * Checks a value against an image parameter.
+ *
+ * A picture is stored as the `data:` URI it arrived as, and nothing else is
+ * accepted: a path or a URL would make a document that stops working when it
+ * is moved or sent, which is exactly what embedding avoids.
+ */
+export function imageValueError(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return `expected a data URI, received ${JSON.stringify(value)}`;
+  }
+  if (value === '' || value.startsWith('data:')) return null;
+  return 'expected a data URI, or an empty string for no picture';
+}
+
 function validateLeafParameter(
   parameter: LeafParameter,
   path: string,
@@ -145,6 +161,21 @@ function validateParameter(
       path: `${path}.type`,
       message: `Unsupported parameter type ${JSON.stringify(parameter.type)}.`,
     });
+    return;
+  }
+
+  if (isImageParameter(parameter)) {
+    if (!allowNesting) {
+      errors.push({
+        path: `${path}.type`,
+        message: 'A repeatable group cannot contain a picture.',
+      });
+      return;
+    }
+    const reason = imageValueError(parameter.defaultValue);
+    if (reason !== null) {
+      errors.push({ path: `${path}.defaultValue`, message: `Default value ${reason}.` });
+    }
     return;
   }
 
@@ -240,7 +271,9 @@ export function validateValues(
       continue;
     }
 
-    const reason = leafValueError(parameter, value);
+    const reason = isImageParameter(parameter)
+      ? imageValueError(value)
+      : leafValueError(parameter, value);
     if (reason !== null) {
       errors.push({ path: `${path}.${name}`, message: `Value ${reason}.` });
     }
@@ -368,6 +401,8 @@ function validatePasses(manifest: ShaderManifest, errors: ManifestError[]): void
       });
     }
     seen.add(pass.name);
+
+    validatePassTarget(pass, index, errors);
   });
 
   const positionOf = new Map(passes.map((pass, index) => [pass.name, index]));
@@ -399,6 +434,64 @@ function validatePasses(manifest: ShaderManifest, errors: ManifestError[]): void
       }
     }
   });
+}
+
+/** The most times a pass may be repeated in one frame. */
+export const MAX_PASS_ITERATIONS = 64;
+
+/**
+ * What a pass asks of its target: how precise, how large, and how many times
+ * it runs.
+ *
+ * Each of these costs memory or frame rate in proportion to what it asks for,
+ * so each is checked rather than trusted — a scale of zero allocates nothing
+ * to draw into, and an unbounded iteration count is a hung frame.
+ */
+function validatePassTarget(pass: ShaderPass, index: number, errors: ManifestError[]): void {
+  const path = `passes[${String(index)}]`;
+
+  if (pass.precision !== undefined && pass.precision !== 'byte' && pass.precision !== 'float') {
+    errors.push({
+      path: `${path}.precision`,
+      message: `Unsupported precision ${JSON.stringify(pass.precision)}. A pass target holds "byte" or "float".`,
+    });
+  }
+
+  if (pass.scale !== undefined && !(pass.scale > 0 && pass.scale <= 1)) {
+    errors.push({
+      path: `${path}.scale`,
+      message: 'Scale is a fraction of the object, greater than 0 and at most 1.',
+    });
+  }
+
+  if (pass.iterations === undefined) return;
+
+  if (!Number.isInteger(pass.iterations) || pass.iterations < 1) {
+    errors.push({
+      path: `${path}.iterations`,
+      message: 'Iterations must be a whole number of at least 1.',
+    });
+    return;
+  }
+
+  if (pass.iterations > MAX_PASS_ITERATIONS) {
+    errors.push({
+      path: `${path}.iterations`,
+      message: `Declares ${String(pass.iterations)} iterations, over the ceiling of ${String(MAX_PASS_ITERATIONS)}. Every one of them is a draw, every frame.`,
+    });
+  }
+
+  // Iterating a pass that cannot see what it last wrote runs the same
+  // computation over and over and keeps the last answer.
+  const readsItself = (pass.reads ?? []).some(
+    (input) => input.pass === pass.name && input.previousFrame === true,
+  );
+  if (pass.iterations > 1 && !readsItself) {
+    errors.push({
+      path: `${path}.iterations`,
+      message: `Pass "${pass.name}" runs more than once but never reads what it last wrote, so every run after the first repeats the first.`,
+    });
+  }
 }
 
 export function validateManifest(manifest: ShaderManifest): ManifestError[] {

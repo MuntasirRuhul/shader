@@ -1,6 +1,8 @@
 import {
   isGroupParameter,
+  isImageParameter,
   type GroupParameter,
+  type ImageParameter,
   type LeafParameter,
   type ParameterSchema,
   type ParameterValues,
@@ -51,6 +53,22 @@ export function groupCountUniform(group: GroupParameter): string {
 }
 
 /**
+ * The uniform saying whether a picture is actually bound.
+ *
+ * A shader has to be able to ask: an image parameter with nothing chosen, and
+ * one whose file is still decoding, both leave the sampler holding whatever
+ * texture was last bound to that unit.
+ */
+export function imagePresentUniform(parameter: ImageParameter): string {
+  return `${parameter.name}_present`;
+}
+
+/** The uniform carrying a picture's own pixel dimensions, for fitting it. */
+export function imageSizeUniform(parameter: ImageParameter): string {
+  return `${parameter.name}_size`;
+}
+
+/**
  * The uniform declarations a shader's parameters require, prepended to its
  * source so a shader author never writes them by hand.
  *
@@ -62,6 +80,13 @@ export function declareUniforms(schema: ParameterSchema): string {
   const lines: string[] = [];
 
   for (const parameter of schema) {
+    if (isImageParameter(parameter)) {
+      lines.push(`uniform sampler2D ${parameter.name};`);
+      lines.push(`uniform bool ${imagePresentUniform(parameter)};`);
+      lines.push(`uniform vec2 ${imageSizeUniform(parameter)};`);
+      continue;
+    }
+
     if (!isGroupParameter(parameter)) {
       lines.push(`uniform ${glslTypeOf(parameter)} ${parameter.name};`);
       continue;
@@ -198,6 +223,10 @@ export function bindParameters(
 
   for (const parameter of schema) {
     const value = resolved[parameter.name];
+
+    // A picture is a texture, and a texture needs a unit and an upload. The
+    // renderer binds it, for the same reason it binds the mask.
+    if (isImageParameter(parameter)) continue;
 
     if (isGroupParameter(parameter)) {
       bindGroup(gl, lookup, parameter, value);

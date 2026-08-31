@@ -3,7 +3,7 @@ import type { PassInput, ShaderPass } from '../../registry/manifest';
 import { ShaderRegistry } from '../../registry/ShaderRegistry';
 import { manifestWith, sampleManifest } from '../../registry/testFixtures';
 import type { RenderItem, RenderScene } from '../renderingPort';
-import { FakeGl } from './testDouble';
+import { FakeGl, type DrawRecord } from './testDouble';
 import { WebGlRenderer } from './WebGlRenderer';
 
 /**
@@ -513,5 +513,210 @@ describe('releasing intermediate targets', () => {
     renderer.renderFrame(0.016);
 
     expect(renderer.targetCount).toBe(1);
+  });
+});
+
+describe('a pass never draws into a texture it could also read', () => {
+  /**
+   * The bug this pins down cost an afternoon: a target sampled on one frame
+   * stayed bound to its unit, so the next frame's pass was both reading and
+   * writing it. WebGL calls that a feedback loop and drops the draw entirely
+   * — silently. The shader compiled, the pass "ran", and the field it wrote
+   * was zeros for ever.
+   */
+  function feedbackLoops(): DrawRecord[] {
+    return gl.draws.filter((draw) => {
+      if (!draw.target) return false;
+      const written = gl.textureOf(draw.target);
+      return [...draw.textures.values()].some((bound) => bound !== null && bound === written);
+    });
+  }
+
+  it('holds across frames, when a target has been read once already', () => {
+    const renderer = createRenderer();
+    renderer.setScene(scene(item({ shaderId: 'two-pass' })));
+
+    renderer.renderFrame(0);
+    renderer.renderFrame(0.016);
+    renderer.renderFrame(0.032);
+
+    expect(feedbackLoops()).toEqual([]);
+  });
+
+  it('holds for a pass that reads what it wrote last frame', () => {
+    // The one place a target legitimately is both read and written — and
+    // exactly why the two buffers exist.
+    const renderer = createRenderer();
+    renderer.setScene(scene(item({ shaderId: 'feedback' })));
+
+    renderer.renderFrame(0);
+    renderer.renderFrame(0.016);
+
+    expect(feedbackLoops()).toEqual([]);
+  });
+
+  it('holds for two objects sharing one multi-pass shader', () => {
+    const renderer = createRenderer();
+    renderer.setScene(
+      scene(item({ shaderId: 'three-pass' }), item({ objectId: 'other', shaderId: 'three-pass' })),
+    );
+
+    renderer.renderFrame(0);
+    renderer.renderFrame(0.016);
+
+    expect(feedbackLoops()).toEqual([]);
+  });
+
+  it('leaves a newly allocated target unbound, since unit 0 is where samplers start', () => {
+    const renderer = createRenderer();
+    renderer.setScene(scene(item({ shaderId: 'two-pass' })));
+
+    renderer.renderFrame(0);
+
+    // The first frame allocates the target and draws into it in the same
+    // breath; allocation binds the texture to inspect it.
+    expect(feedbackLoops()).toEqual([]);
+  });
+});
+
+describe('what a pass asks of its target', () => {
+  /** A solve: the same relaxation repeated, reading what it last wrote. */
+  const solver = manifestWith({
+    id: 'solver',
+    parameters: [],
+    presets: [{ id: 'default', name: 'Default', values: {} }],
+    passes: [
+      {
+        name: 'pressure',
+        fragmentSource: 'void main() { outColor = texture(uPrevious, vUv); }',
+        reads: [{ uniform: 'uPrevious', pass: 'pressure', previousFrame: true }],
+        precision: 'float',
+        scale: 0.25,
+        iterations: 8,
+      },
+      {
+        name: 'show',
+        fragmentSource: 'void main() { outColor = texture(uField, vUv); }',
+        reads: [{ uniform: 'uField', pass: 'pressure' }],
+      },
+    ],
+  });
+
+  beforeEach(() => {
+    registry.register(solver);
+  });
+
+  it('runs an iterated pass once per iteration, and the rest once', () => {
+    const renderer = createRenderer();
+    renderer.setScene(scene(item({ shaderId: 'solver' })));
+
+    renderer.renderFrame(0);
+
+    // Eight relaxations, then the pass that shows the result.
+    expect(gl.draws).toHaveLength(9);
+  });
+
+  it('tells each run which one it is', () => {
+    const renderer = createRenderer();
+    renderer.setScene(scene(item({ shaderId: 'solver' })));
+
+    renderer.renderFrame(0);
+
+    const written = gl.writesTo('uIteration').map((write) => write.value);
+    expect(written.slice(0, 8)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+  });
+
+  it('flips the buffers on every run, so each reads the one before', () => {
+    const renderer = createRenderer();
+    renderer.setScene(scene(item({ shaderId: 'solver' })));
+
+    renderer.renderFrame(0);
+
+    // Each relaxation must sample what the run before it drew into.
+    const relaxations = gl.draws.slice(0, 8);
+    for (const [index, draw] of relaxations.entries()) {
+      if (index === 0) continue;
+      const sampled = [...draw.textures.values()];
+      const previous = relaxations[index - 1]?.target;
+      expect(previous, 'every relaxation draws into a target').toBeTruthy();
+      expect(sampled).toContain(previous ? gl.textureOf(previous) : null);
+    }
+  });
+
+  it('draws a scaled pass at a fraction of the object, and the rest at full size', () => {
+    const renderer = createRenderer();
+    renderer.resize(800, 600);
+    renderer.setScene(
+      scene(
+        item({
+          shaderId: 'solver',
+          transform: { x: 0, y: 0, width: 400, height: 200, rotation: 0 },
+        }),
+      ),
+    );
+
+    renderer.renderFrame(0);
+
+    expect(renderer.targetSize('object-1', 'pressure')).toEqual({ width: 100, height: 50 });
+    expect(gl.draws[0]?.viewport).toEqual({ width: 100, height: 50 });
+    expect(gl.draws.at(-1)?.viewport).toEqual({ width: 800, height: 600 });
+  });
+
+  it('allocates a float target for a pass that holds a field', () => {
+    const renderer = createRenderer();
+    renderer.setScene(scene(item({ shaderId: 'solver' })));
+
+    renderer.renderFrame(0);
+
+    expect(gl.requestedExtensions).toContain('EXT_color_buffer_float');
+    expect(gl.allocations.some((allocation) => allocation.internalFormat === gl.RGBA16F)).toBe(
+      true,
+    );
+  });
+
+  it('falls back to bytes when the driver will not draw into a float target', () => {
+    // A shader that looks poor beats a canvas that is blank.
+    gl = new FakeGl({ withoutExtensions: ['EXT_color_buffer_float'] });
+    const renderer = createRenderer();
+    renderer.setScene(scene(item({ shaderId: 'solver' })));
+
+    renderer.renderFrame(0);
+
+    expect(gl.allocations.every((allocation) => allocation.internalFormat === gl.RGBA8)).toBe(true);
+    expect(gl.draws.length).toBeGreaterThan(0);
+  });
+
+  it('reallocates when a pass changes what its target must hold', () => {
+    const renderer = createRenderer();
+    renderer.setScene(scene(item({ shaderId: 'solver' })));
+    renderer.renderFrame(0);
+    const allocated = gl.allocations.length;
+
+    // The same object, refilled with a shader whose pass wants plain bytes.
+    registry.register(
+      manifestWith({
+        id: 'solver-bytes',
+        parameters: [],
+        presets: [{ id: 'default', name: 'Default', values: {} }],
+        passes: [
+          {
+            name: 'pressure',
+            fragmentSource: 'void main() { outColor = texture(uPrevious, vUv); }',
+            reads: [{ uniform: 'uPrevious', pass: 'pressure', previousFrame: true }],
+            scale: 0.25,
+          },
+          {
+            name: 'show',
+            fragmentSource: 'void main() { outColor = texture(uField, vUv); }',
+            reads: [{ uniform: 'uField', pass: 'pressure' }],
+          },
+        ],
+      }),
+    );
+    renderer.setScene(scene(item({ shaderId: 'solver-bytes' })));
+    renderer.renderFrame(0.016);
+
+    expect(gl.allocations.length).toBeGreaterThan(allocated);
+    expect(gl.allocations.at(-1)?.internalFormat).toBe(gl.RGBA8);
   });
 });

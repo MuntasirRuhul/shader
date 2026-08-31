@@ -28,6 +28,14 @@ export const RESERVED_UNIFORMS = {
   image: 'uImage',
   /** Whether an image is bound; a file still decoding has none yet. */
   hasImage: 'uHasImage',
+  /**
+   * Which run of an iterated pass this is, counting from zero.
+   *
+   * A solve often has to begin differently from how it continues — the fluid's
+   * pressure field decays before the first relaxation and not between the
+   * others — and the shader cannot tell one run from the next otherwise.
+   */
+  iteration: 'uIteration',
 } as const;
 
 export const RESERVED_UNIFORM_NAMES: readonly string[] = Object.values(RESERVED_UNIFORMS);
@@ -81,6 +89,7 @@ uniform sampler2D ${RESERVED_UNIFORMS.mask};
 uniform bool ${RESERVED_UNIFORMS.hasMask};
 uniform sampler2D ${RESERVED_UNIFORMS.image};
 uniform bool ${RESERVED_UNIFORMS.hasImage};
+uniform int ${RESERVED_UNIFORMS.iteration};
 `;
 
 /** Applied after the shader's own `main`, to fold in opacity and any mask. */

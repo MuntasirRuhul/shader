@@ -48,6 +48,9 @@ export interface GlContext {
   readonly TEXTURE_WRAP_T: number;
   readonly UNPACK_FLIP_Y_WEBGL: number;
   readonly RGBA8: number;
+  /** Sixteen-bit signed float storage, for a pass that holds a field. */
+  readonly RGBA16F: number;
+  readonly NEAREST: number;
   readonly FRAMEBUFFER: number;
   readonly COLOR_ATTACHMENT0: number;
   readonly FUNC_ADD: number;
@@ -134,4 +137,12 @@ export interface GlContext {
   drawArrays: (mode: number, first: number, count: number) => void;
 
   isContextLost: () => boolean;
+
+  /**
+   * Asks for an optional capability, returning null when the driver has none.
+   *
+   * Rendering into a float target is one: WebGL2 can sample such a texture
+   * without asking, but drawing into it needs `EXT_color_buffer_float`.
+   */
+  getExtension: (name: string) => unknown;
 }
