@@ -32,6 +32,14 @@ function groupsOf(manifest: ShaderManifest) {
   return [...manifest.parameters, ...(manifest.simulation?.schema ?? [])].filter(isGroupParameter);
 }
 
+/** Every fragment source a shader compiles: its own, and each pass's. */
+function sourcesOf(manifest: ShaderManifest): string {
+  return [
+    manifest.fragmentSource,
+    ...(manifest.passes ?? []).map((pass) => pass.fragmentSource),
+  ].join('\n');
+}
+
 /** The fixed array size a shader's GLSL allocates for a named group. */
 function allocatedSize(manifest: ShaderManifest, groupName: string): number | undefined {
   // The runtime declares `name_entry[N]`; the shader must loop to the same N.
@@ -69,13 +77,13 @@ describe('every shader in the catalogue', () => {
   it.each(catalogue)('$id addresses its object, not the drawing surface', (manifest) => {
     // An object is a transformed quad; screen coordinates cannot say which
     // rectangle a shader is meant to fill.
-    expect(manifest.fragmentSource).not.toContain('gl_FragCoord');
+    expect(sourcesOf(manifest)).not.toContain('gl_FragCoord');
   });
 
   it.each(catalogue)('$id does not read a device pixel ratio', (manifest) => {
     // The runtime already renders at the device ratio. A shader compensating
     // again would double-apply it and render differently per display.
-    expect(manifest.fragmentSource).not.toMatch(/\bu_?dpr\b/i);
+    expect(sourcesOf(manifest)).not.toMatch(/\bu_?dpr\b/i);
   });
 });
 
@@ -94,7 +102,7 @@ describe('a repeatable group matches what its shader allocates', () => {
    * in JavaScript, and there is no array in the GLSL for it to disagree with.
    */
   const readByProgram = withGroups.filter(({ manifest, group }) =>
-    manifest.fragmentSource.includes(`${group.name}_`),
+    sourcesOf(manifest).includes(`${group.name}_`),
   );
 
   it('there is at least one group to check', () => {
@@ -109,11 +117,11 @@ describe('a repeatable group matches what its shader allocates', () => {
   it.each(readByProgram)('$id loops to that same size', ({ manifest, group }) => {
     // A loop bound that disagrees with the array silently drops entries.
     const bound = new RegExp(`i\\s*<\\s*${String(group.maxEntries)}\\b`);
-    expect(manifest.fragmentSource).toMatch(bound);
+    expect(sourcesOf(manifest)).toMatch(bound);
   });
 
   it.each(readByProgram)('$id reads the count the runtime supplies', ({ manifest, group }) => {
-    expect(manifest.fragmentSource).toContain(`${group.name}_count`);
+    expect(sourcesOf(manifest)).toContain(`${group.name}_count`);
   });
 
   const editable = catalogue.flatMap((manifest) =>
@@ -141,8 +149,10 @@ describe('a repeatable group matches what its shader allocates', () => {
 
 describe('a shader that declares neither state nor passes', () => {
   // The migration for every existing shader was to do nothing, and this is
-  // what says so: only the metaball took up either capability.
-  const unchanged = catalogue.filter((manifest) => manifest.id !== 'metaball');
+  // what says so: state and passes are taken up by the shaders that need
+  // them, and cost the rest nothing.
+  const extended = new Set(['metaball', 'water-ripple', 'fluid', 'ink-trail']);
+  const unchanged = catalogue.filter((manifest) => !extended.has(manifest.id));
 
   it('is most of the catalogue', () => {
     expect(unchanged.length).toBeGreaterThan(1);
@@ -156,11 +166,24 @@ describe('a shader that declares neither state nor passes', () => {
     expect(manifest.passes).toBeUndefined();
   });
 
-  it('leaves the metaball as the one shader using them', () => {
+  it('names which shaders take up each capability', () => {
+    // The metaball moves in JavaScript and draws in one program; the water
+    // ripple does both, since its wake is state and its slope is a pass.
     const metaball = registry.get('metaball');
-
     expect(metaball?.simulation).toBeDefined();
     expect(metaball?.passes).toBeUndefined();
+
+    const ripple = registry.get('water-ripple');
+    expect(ripple?.simulation).toBeDefined();
+    expect(ripple?.passes).toHaveLength(2);
+
+    // The fluid is the one that needed the passes to grow: fields held in
+    // float, solved at a fraction of the object, and a solve repeated.
+    const fluid = registry.get('fluid');
+    expect(fluid?.simulation).toBeDefined();
+    expect(fluid?.passes?.some((pass) => pass.precision === 'float')).toBe(true);
+    expect(fluid?.passes?.some((pass) => (pass.iterations ?? 1) > 1)).toBe(true);
+    expect(fluid?.passes?.some((pass) => (pass.scale ?? 1) < 1)).toBe(true);
   });
 });
 
@@ -284,10 +307,7 @@ describe('no shipped shader knows the view exists', () => {
   // differently depending on where it happened to be looked at from, which is
   // the coupling `vUv` exists to remove.
   it.each(catalogue)('$id reads no viewport, pan, or zoom', (manifest) => {
-    const sources = [
-      manifest.fragmentSource,
-      ...(manifest.passes ?? []).map((pass) => pass.fragmentSource),
-    ].join('\n');
+    const sources = sourcesOf(manifest);
 
     expect(sources).not.toMatch(/\bu_?viewport\b/i);
     expect(sources).not.toMatch(/\bu_?pan\b/i);
@@ -313,6 +333,7 @@ describe('no shipped shader knows the view exists', () => {
       'uHasImage',
       'uHasMask',
       'uImage',
+      'uIteration',
       'uMask',
       'uOpacity',
       'uResolution',

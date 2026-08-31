@@ -1,8 +1,11 @@
 import { imageFillManifest, ShaderRegistry, solidFillManifest } from '@shader/core';
+import { fluidManifest } from './fluid';
 import { gradientBlurManifest } from './gradientBlur';
+import { inkTrailManifest } from './inkTrail';
 import { meshGradientManifest } from './meshGradient';
 import { metaballManifest } from './metaball';
 import { ribbonManifest } from './ribbon';
+import { waterRippleManifest } from './waterRipple';
 
 /**
  * The shaders the application ships with.
@@ -21,6 +24,9 @@ registry.registerOrThrow(meshGradientManifest);
 registry.registerOrThrow(metaballManifest);
 registry.registerOrThrow(ribbonManifest);
 registry.registerOrThrow(gradientBlurManifest);
+registry.registerOrThrow(waterRippleManifest);
+registry.registerOrThrow(fluidManifest);
+registry.registerOrThrow(inkTrailManifest);
 
 /** The shaders offered in the library, excluding built-ins. */
 export function libraryShaders() {
