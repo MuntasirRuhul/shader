@@ -79,6 +79,67 @@ The runtime SHALL render a shader's passes in declared order, giving each pass t
 - **WHEN** an object using a multi-pass shader changes size
 - **THEN** the intermediate targets follow, and what a pass reads stays aligned with what is drawn
 
+#### Scenario: A pass is drawn into while it is still readable
+
+- **WHEN** a pass draws into a target that a sampler unit still holds
+- **THEN** this SHALL NOT happen: the runtime releases what a pass sampled once it has drawn, and leaves a newly allocated target bound to nothing
+
+The graphics interface treats a texture that is both read and written by one
+draw as a feedback loop and discards the draw entirely, without an error the
+shader author ever sees — the pass appears to run and its target keeps whatever
+it was cleared to.
+
+### Requirement: A pass declares what its target must hold
+
+The runtime SHALL let a pass declare the precision of its target, the fraction
+of the object it runs at, and how many times it runs per frame, and SHALL
+default each to the plainest choice — eight bits a channel, the object's full
+size, and once — so a pass that draws a picture costs no more than it did
+before any of this existed.
+
+#### Scenario: A pass holds a field rather than a colour
+
+- **WHEN** a pass declares float precision
+- **THEN** its target holds signed sixteen-bit channels, so a velocity, a pressure, or a colour brighter than white survives being written
+
+#### Scenario: The driver cannot draw into a float target
+
+- **WHEN** the graphics driver does not offer rendering into float targets
+- **THEN** the pass falls back to eight bits and still draws, because a shader that looks poor is better than a canvas that is blank
+
+#### Scenario: A solve runs coarser than what is shown
+
+- **WHEN** a pass declares a scale below one
+- **THEN** its target is that fraction of the object's size, and later passes sampling it are unaffected by its resolution
+
+#### Scenario: A pass repeats until its field relaxes
+
+- **WHEN** a pass declares several iterations and reads what it last wrote
+- **THEN** it runs that many times per frame, each run reading the previous run's output
+- **AND** each run is told which iteration it is, since a solve often begins differently from how it continues
+
+#### Scenario: A pass repeats but cannot see what it last wrote
+
+- **WHEN** a pass declares more than one iteration without reading itself
+- **THEN** registration fails: every run after the first would repeat the first, at the full cost of a draw
+
+### Requirement: A shader is bound the pictures it declares
+
+The runtime SHALL bind a texture for each picture parameter a shader declares,
+under a sampler of that parameter's name, together with whether a picture is
+bound at all and the picture's own pixel dimensions.
+
+#### Scenario: A picture has been chosen
+
+- **WHEN** an object's shader declares a picture parameter and its picture has decoded
+- **THEN** the picture is bound for every pass the shader draws through
+- **AND** the shader is told its dimensions, so it can fit it to an object of another shape
+
+#### Scenario: No picture has been chosen, or it is still decoding
+
+- **WHEN** a picture parameter has no value, or its file has not finished decoding
+- **THEN** the shader is told no picture is bound, rather than being left sampling whatever the unit last held
+
 ### Requirement: Single shared render loop
 
 The runtime SHALL drive all animated shaders from one animation loop synchronized to the display refresh.

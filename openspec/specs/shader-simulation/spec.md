@@ -95,6 +95,16 @@ An advance SHALL receive the pointer's position in the object's coordinates, and
 - **WHEN** an object is moved, resized, or rotated
 - **THEN** the pointer position the advance receives is expressed in the object's new frame, so a shader reacting to the pointer needs no knowledge of the object's placement
 
+#### Scenario: The pointer moves over the canvas
+
+- **WHEN** the pointer moves over the canvas, whether or not anything is being dragged
+- **THEN** the canvas supplies that position to the scene it renders, so the advance receives a pointer that actually follows the cursor
+
+This is stated because it was for a time the missing half: every other part of
+the path existed — the scene expressed the pointer per object, the runtime
+handed it to each advance — and the canvas supplied nothing, so a shader
+reacting to the pointer reacted to nothing at all.
+
 ### Requirement: A failing advance does not take the canvas down
 
 An advance that throws or overruns SHALL be reported and stopped for that object, and the rest of the canvas SHALL continue rendering.

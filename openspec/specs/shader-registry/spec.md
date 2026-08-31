@@ -89,7 +89,7 @@ The registry SHALL validate every manifest when it is registered and SHALL rejec
 
 ### Requirement: Parameter schema vocabulary
 
-A manifest's parameter schema SHALL declare each parameter's identifier, display label, type, default value, and any constraints. The schema SHALL support numeric parameters with a range and step, boolean parameters, color parameters, enumerated parameters with a fixed set of options, two-component vector parameters, and repeatable groups whose entries each carry their own parameters.
+A manifest's parameter schema SHALL declare each parameter's identifier, display label, type, default value, and any constraints. The schema SHALL support numeric parameters with a range and step, boolean parameters, color parameters, enumerated parameters with a fixed set of options, two-component vector parameters, picture parameters, and repeatable groups whose entries each carry their own parameters.
 
 #### Scenario: A numeric parameter is declared
 
@@ -102,6 +102,22 @@ A manifest's parameter schema SHALL declare each parameter's identifier, display
 - **WHEN** a parameter declares an enumerated type with a set of options
 - **THEN** the registry accepts it
 - **AND** its declared default is one of those options
+
+#### Scenario: A picture parameter is declared
+
+- **WHEN** a parameter declares a picture type
+- **THEN** the registry accepts it
+- **AND** its value is a self-contained `data:` URI, or empty when no picture has been chosen, so a document that is sent still shows what its shaders were reading
+
+#### Scenario: A picture parameter is given a reference rather than the bytes
+
+- **WHEN** a picture parameter's value is a path or a URL
+- **THEN** registration fails, because a document that stops working when a file moves is not a document
+
+#### Scenario: A picture is declared inside a repeatable group
+
+- **WHEN** a repeatable group declares a picture among its entry parameters
+- **THEN** registration fails and the reported error names the group: a group binds fixed-size uniform arrays, and there is no array of samplers for one picture per entry
 
 #### Scenario: A repeatable group is declared
 
