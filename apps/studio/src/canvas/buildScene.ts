@@ -30,6 +30,14 @@ export interface SceneOptions {
   /** Supplies an image object's decoded picture, once it has decoded. */
   readonly imageFor?: (object: CanvasObject) => TexSource | undefined;
   /**
+   * Supplies the pictures a shader's own image parameters point at, keyed by
+   * parameter name. Which parameters those are is the manifest's business, so
+   * the caller resolves them; this only carries the result to the renderer.
+   */
+  readonly shaderImagesFor?: (
+    object: CanvasObject,
+  ) => Readonly<Record<string, TexSource>> | undefined;
+  /**
    * Where the pointer is, in canvas coordinates. Each object receives it in
    * its own frame, so a shader reacting to the pointer needs no knowledge of
    * where its object sits or how it is turned.
@@ -59,6 +67,7 @@ export function buildScene(document: CanvasDocument, options: SceneOptions = {})
 
     const mask = options.maskFor?.(object);
     const image = options.imageFor?.(object);
+    const parameterImages = options.shaderImagesFor?.(object);
 
     // An imported picture draws itself unless a shader has been put over it,
     // in which case the picture is still bound for that shader to sample.
@@ -77,6 +86,7 @@ export function buildScene(document: CanvasDocument, options: SceneOptions = {})
       blendMode: object.blendMode,
       ...(mask === undefined ? {} : { mask }),
       ...(image === undefined ? {} : { image }),
+      ...(parameterImages === undefined ? {} : { parameterImages }),
     });
   }
 

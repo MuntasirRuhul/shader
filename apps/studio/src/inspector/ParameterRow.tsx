@@ -1,9 +1,9 @@
-import type { LeafParameter, ParameterValue } from '@shader/core';
+import type { ImageParameter, LeafParameter, ParameterValue } from '@shader/core';
 import { ParameterControl } from './ParameterControl';
 import styles from './ParameterRow.module.css';
 
 export interface ParameterRowProps {
-  readonly parameter: LeafParameter;
+  readonly parameter: LeafParameter | ImageParameter;
   readonly value: ParameterValue;
   readonly isDefault: boolean;
   readonly onChange: (value: ParameterValue) => void;

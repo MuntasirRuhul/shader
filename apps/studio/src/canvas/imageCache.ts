@@ -20,6 +20,8 @@ export interface ReadyImage {
 }
 
 interface Entry {
+  /** The object this picture belongs to, so it is dropped when that goes. */
+  readonly owner: string;
   /** What was decoded, once it has been. */
   image?: HTMLImageElement;
   /** The rasterization a vector was last drawn at, and at what scale. */
@@ -45,19 +47,47 @@ export class ImageCache {
    * decoding — or if it never will, which a corrupt file makes possible.
    */
   sourceFor(object: ImageObject, zoom: number, devicePixelRatio = 1): ReadyImage | undefined {
-    const existing = this.entries.get(object.id);
-
-    if (!existing || existing.source !== object.source) {
-      this.decode(object);
-      return undefined;
-    }
-    if (existing.failed || !existing.image) return undefined;
+    const existing = this.decoded(object.id, object.id, object.source);
+    if (!existing) return undefined;
 
     if (!isVectorImage(object)) {
       return { source: existing.image, revision: existing.revision };
     }
 
     return this.rasterized(object, existing, zoom, devicePixelRatio);
+  }
+
+  /**
+   * The picture a shader's image parameter points at, once it has decoded.
+   *
+   * Uploaded as it arrived rather than rasterized for the current zoom: a
+   * shader samples a picture as texture, and what it wants is the pixels, not
+   * a rendering of them at the size the object happens to be on screen.
+   */
+  parameterSource(owner: string, key: string, source: string): ReadyImage | undefined {
+    const entry = this.decoded(owner, key, source);
+    return entry ? { source: entry.image, revision: entry.revision } : undefined;
+  }
+
+  /**
+   * The decoded entry for a key, starting a decode when there is none or when
+   * the source has been replaced. Absent while it decodes, and for good if it
+   * cannot be decoded at all.
+   */
+  private decoded(
+    owner: string,
+    key: string,
+    source: string,
+  ): (Entry & { image: HTMLImageElement }) | undefined {
+    const existing = this.entries.get(key);
+
+    if (!existing || existing.source !== source) {
+      this.decode(owner, key, source);
+      return undefined;
+    }
+    if (existing.failed || !existing.image) return undefined;
+
+    return existing as Entry & { image: HTMLImageElement };
   }
 
   /**
@@ -92,9 +122,9 @@ export class ImageCache {
     return { source: canvas, revision: entry.revision };
   }
 
-  private decode(object: ImageObject): void {
-    const entry: Entry = { revision: 0, source: object.source, failed: false };
-    this.entries.set(object.id, entry);
+  private decode(owner: string, key: string, source: string): void {
+    const entry: Entry = { owner, revision: 0, source, failed: false };
+    this.entries.set(key, entry);
 
     // A `data:` URI carries its own bytes, so there is no origin to negotiate
     // and nothing to taint a canvas with. Asking for CORS anyway makes some
@@ -104,25 +134,25 @@ export class ImageCache {
 
     image.onload = () => {
       // The object may have been given a different file while this decoded.
-      if (this.entries.get(object.id) !== entry) return;
+      if (this.entries.get(key) !== entry) return;
       entry.image = image;
       entry.revision += 1;
       this.onReady();
     };
     image.onerror = () => {
-      if (this.entries.get(object.id) !== entry) return;
+      if (this.entries.get(key) !== entry) return;
       entry.failed = true;
       this.onReady();
     };
 
-    image.src = object.source;
+    image.src = source;
   }
 
   /** Forgets pictures for objects the document no longer contains. */
   retainOnly(objectIds: Iterable<string>): void {
     const live = new Set(objectIds);
-    for (const id of [...this.entries.keys()]) {
-      if (!live.has(id)) this.entries.delete(id);
+    for (const [key, entry] of [...this.entries]) {
+      if (!live.has(entry.owner)) this.entries.delete(key);
     }
   }
 

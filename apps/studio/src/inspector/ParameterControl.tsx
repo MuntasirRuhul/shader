@@ -1,9 +1,15 @@
-import { type LeafParameter, type ParameterValue, type Vector2Value } from '@shader/core';
+import {
+  type ImageParameter,
+  type LeafParameter,
+  type ParameterValue,
+  type Vector2Value,
+} from '@shader/core';
 import { ColorField, NumberField, Select, Slider, Toggle } from '@shader/design-system';
+import { ImageField } from './ImageField';
 import styles from './ParameterControl.module.css';
 
 export interface ParameterControlProps {
-  readonly parameter: LeafParameter;
+  readonly parameter: LeafParameter | ImageParameter;
   readonly value: ParameterValue;
   readonly disabled?: boolean;
   /** Fires continuously, e.g. while a slider is dragged. */
@@ -101,6 +107,19 @@ export function ParameterControl({
             onCommit?.(next);
           }}
           options={parameter.options}
+          value={typeof value === 'string' ? value : parameter.defaultValue}
+        />
+      );
+
+    case 'image':
+      return (
+        <ImageField
+          disabled={disabled}
+          onChange={(next) => {
+            onChange(next);
+            onCommit?.(next);
+          }}
+          parameter={parameter}
           value={typeof value === 'string' ? value : parameter.defaultValue}
         />
       );

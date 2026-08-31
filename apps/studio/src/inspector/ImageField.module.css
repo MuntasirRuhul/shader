@@ -1,0 +1,44 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-3);
+}
+
+.preview {
+  display: block;
+  width: 100%;
+  max-height: 120px;
+  border: 1px solid var(--sb-border-subtle);
+  border-radius: var(--sb-radius-md);
+  background-color: var(--sb-surface-canvas);
+  object-fit: contain;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 64px;
+  margin: 0;
+  border: 1px dashed var(--sb-border-subtle);
+  border-radius: var(--sb-radius-md);
+  color: var(--sb-text-muted);
+  font-size: var(--sb-font-size-sm);
+}
+
+.actions {
+  display: flex;
+  gap: var(--sb-space-2);
+}
+
+/* Present for the picker to be driven from a button, and never seen. */
+.fileInput {
+  display: none;
+}
+
+.refusal {
+  margin: 0;
+  color: var(--sb-text-secondary);
+  font-size: var(--sb-font-size-sm);
+  line-height: var(--sb-line-height-normal);
+}

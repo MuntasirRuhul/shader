@@ -27,7 +27,7 @@ export function CanvasStage({ registry, onCompileFailure, onToggleChrome }: Canv
   const viewport = useEditorStore((state) => state.viewport);
   const editingTextId = useEditorStore((state) => state.tool.editingTextId);
 
-  const { canvasRef } = useShaderCanvas({
+  const { canvasRef, setPointer } = useShaderCanvas({
     document,
     registry,
     viewport,
@@ -41,7 +41,10 @@ export function CanvasStage({ registry, onCompileFailure, onToggleChrome }: Canv
   }, []);
 
   const { theme } = useTheme();
-  const pointer = useCanvasPointer(useEditorStore.getState, { ink: inkFor(theme) });
+  const pointer = useCanvasPointer(useEditorStore.getState, {
+    ink: inkFor(theme),
+    onHover: setPointer,
+  });
 
   // Bound here, non-passively, because React's own wheel listener is passive
   // and cannot stop the browser magnifying the page.
@@ -68,6 +71,7 @@ export function CanvasStage({ registry, onCompileFailure, onToggleChrome }: Canv
       className={styles.stage}
       onDoubleClick={pointer.onDoubleClick}
       onPointerDown={pointer.onPointerDown}
+      onPointerLeave={pointer.onPointerLeave}
       onPointerMove={pointer.onPointerMove}
       onPointerUp={pointer.onPointerUp}
       ref={stageRef}

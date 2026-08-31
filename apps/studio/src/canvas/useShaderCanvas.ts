@@ -6,6 +6,7 @@ import {
   isShaderFill,
   type CanvasDocument,
   type ParameterValues,
+  type Point,
   type RenderScene,
   type RenderViewport,
   type RuntimeStatus,
@@ -17,6 +18,7 @@ import { onFontsChanged } from '../inspector/fonts';
 import { transientChannel, type TransientEdit } from '../store/transientChannel';
 import { buildScene } from './buildScene';
 import { ImageCache } from './imageCache';
+import { shaderPicturesFor } from './shaderPictures';
 import { TextMaskCache } from './textRasterizer';
 
 /**
@@ -95,6 +97,14 @@ export interface ShaderCanvas {
   readonly status: RuntimeStatus;
   /** Redraws immediately, for a change that does not animate. */
   readonly requestFrame: () => void;
+  /**
+   * Where the pointer is over the canvas, or `undefined` once it has left.
+   *
+   * Held here rather than in the store: a hover is not an edit, it happens at
+   * pointer cadence, and putting it through React would re-render the whole
+   * document on every mouse move.
+   */
+  readonly setPointer: (point: Point | undefined) => void;
 }
 
 /**
@@ -140,6 +150,8 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
 
   /** Values published by an in-progress drag, applied over the document. */
   const transientRef = useRef<readonly TransientEdit[]>([]);
+  /** Where the pointer is, for a shader that reacts to it. */
+  const pointerRef = useRef<Point | undefined>(undefined);
 
   /** The scene for the current document, with text masks and any live drag. */
   const sceneFor = useCallback((document: CanvasDocument) => {
@@ -156,12 +168,22 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
     const source = withTransientEdits(document, transientRef.current);
 
     const scene = buildScene(source, {
+      pointer: pointerRef.current,
       maskFor: (object) =>
         object.type === 'text' ? masks.maskFor(object, viewportRef.current.zoom, ratio) : undefined,
       imageFor: (object) =>
         object.type === 'image'
           ? images.sourceFor(object, viewportRef.current.zoom, ratio)
           : undefined,
+      // A shader may be pointed at pictures of its own — the water ripple
+      // refracts one. Which parameters those are comes from the manifest, so
+      // nothing here names a shader or a parameter.
+      shaderImagesFor: (object) =>
+        shaderPicturesFor(
+          object,
+          (shaderId) => registryRef.current.get(shaderId),
+          (name, chosen) => images.parameterSource(object.id, `${object.id}::${name}`, chosen),
+        ),
     });
 
     // Drop what belongs to objects the scene no longer contains.
@@ -315,5 +337,26 @@ export function useShaderCanvas(options: ShaderCanvasOptions): ShaderCanvas {
     loopRef.current?.renderOnce();
   }, []);
 
-  return { canvasRef: attach, status, requestFrame };
+  /**
+   * A hover redraws, because what a shader draws may depend on it. Nothing
+   * happens for a canvas of shaders that ignore the pointer beyond rebuilding
+   * a scene, which is what a drag already costs.
+   */
+  const setPointer = useCallback(
+    (point: Point | undefined) => {
+      const previous = pointerRef.current;
+      if (previous === undefined && point === undefined) return;
+      pointerRef.current = point;
+
+      const renderer = rendererRef.current;
+      const loop = loopRef.current;
+      if (!renderer || !loop) return;
+
+      renderer.setScene(sceneFor(documentRef.current));
+      if (!loop.isRunning) loop.renderOnce();
+    },
+    [sceneFor],
+  );
+
+  return { canvasRef: attach, status, requestFrame, setPointer };
 }

@@ -45,6 +45,8 @@ export interface CanvasPointerHandlers {
   readonly onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
   readonly onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
   readonly onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
+  /** Reports the pointer gone, so a shader reacting to it stops reacting. */
+  readonly onPointerLeave: () => void;
   readonly onDoubleClick: (event: ReactMouseEvent<HTMLElement>) => void;
   /**
    * Bound natively rather than through React, which registers wheel listeners
@@ -82,6 +84,15 @@ export interface CanvasPointerOptions {
    * without a theme provider is a gesture handler nobody can test.
    */
   readonly ink?: string;
+  /**
+   * Where the pointer is over the canvas, in canvas coordinates, and
+   * `undefined` once it has left.
+   *
+   * Reported on every move, gesture or no gesture: a shader that reacts to the
+   * pointer — the water ripple's wake — is not being dragged, it is being
+   * hovered over.
+   */
+  readonly onHover?: (point: Point | undefined) => void;
 }
 
 export function useCanvasPointer(
@@ -90,6 +101,8 @@ export function useCanvasPointer(
 ): CanvasPointerHandlers {
   const inkRef = useRef(options.ink ?? INK.dark);
   inkRef.current = options.ink ?? INK.dark;
+  const hoverRef = useRef(options.onHover);
+  hoverRef.current = options.onHover;
 
   const [gesture, setGesture] = useState<Gesture>(IDLE);
   const [constrain, setConstrain] = useState(false);
@@ -212,6 +225,11 @@ export function useCanvasPointer(
       const point = pointOf(event, element);
       const state = store();
       const current = gestureRef.current;
+
+      // Reported before anything else: where the pointer is does not depend on
+      // what it is doing, and a shader reacting to it must follow it whether a
+      // gesture is under way or not.
+      hoverRef.current?.(point);
 
       setConstrain(event.shiftKey);
 
@@ -364,6 +382,10 @@ export function useCanvasPointer(
     [pointOf, store],
   );
 
+  const handleLeave = useCallback(() => {
+    hoverRef.current?.(undefined);
+  }, []);
+
   const handleWheel = useCallback(
     (event: globalThis.WheelEvent, element: HTMLElement) => {
       const state = store();
@@ -398,6 +420,7 @@ export function useCanvasPointer(
     onPointerDown: handleDown,
     onPointerMove: handleMove,
     onPointerUp: handleUp,
+    onPointerLeave: handleLeave,
     onDoubleClick: handleDoubleClick,
     onWheel: handleWheel,
   };
