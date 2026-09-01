@@ -44,6 +44,15 @@ export interface HtmlLayerProps {
   readonly onZoom?: (objectId: string, deltaY: number, point: { x: number; y: number }) => void;
 }
 
+/**
+ * How far outside the window a block may sit and still be rendered.
+ *
+ * A block that is nowhere near the view costs layout, paint and memory for
+ * nothing. Kept generous so that a block just off the edge is already there
+ * when it is panned to, rather than appearing as it arrives.
+ */
+const OFFSCREEN_MARGIN = 400;
+
 /** The properties a drag changes about where a block is, and how big. */
 const DRAGGED = ['x', 'y', 'width', 'height', 'rotation'] as const;
 type Dragged = (typeof DRAGGED)[number];
@@ -208,6 +217,22 @@ export function HtmlLayer({
           { x: placement.x + placement.width / 2, y: placement.y + placement.height / 2 },
           viewport,
         );
+
+        // Nowhere near the view: a page-sized block is expensive simply by
+        // existing, and one that cannot be seen need not be drawn at all.
+        const width = placement.width * viewport.zoom;
+        const height = placement.height * viewport.zoom;
+        const left = centre.x - width / 2;
+        const top = centre.y - height / 2;
+        const visible =
+          left < window.innerWidth + OFFSCREEN_MARGIN &&
+          top < window.innerHeight + OFFSCREEN_MARGIN &&
+          left + width > -OFFSCREEN_MARGIN &&
+          top + height > -OFFSCREEN_MARGIN;
+
+        // A block being worked inside stays, whatever the view is doing: it
+        // holds the caret, and rebuilding it would throw the edit away.
+        if (!visible && object.id !== editingId) return null;
 
         const leaving = object.id === editingId && onLeave;
 

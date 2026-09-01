@@ -21,6 +21,13 @@
   border: 0;
   background: transparent;
   transform-origin: 0 0;
+
+  /* A block is a live page, and a page-sized one is millions of pixels of real
+     layout. Promoted to a layer of its own, panning and zooming re-composite
+     what has already been drawn; without this the browser re-rasterises the
+     whole page on every frame of a gesture, which is what made a canvas
+     holding a block — and only one holding a block — seize up. */
+  will-change: transform;
 }
 
 /* The block being worked inside takes the pointer for itself: clicks, hovers
